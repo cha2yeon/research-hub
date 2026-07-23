@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Research Hub Demo</title>
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; background: #f8fafc; color: #1e293b; font-family: Arial, "Malgun Gothic", sans-serif; }
+    main { max-width: 1152px; margin: 0 auto; padding: 40px 16px; }
+    .panel { background: #fff; border: 1px solid #e2e8f0; border-radius: 24px; padding: 32px; box-shadow: 0 1px 3px #0f172a12; }
+    .panel + .panel { margin-top: 28px; }
+    .eyebrow { margin: 0; color: #64748b; font-size: 12px; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; }
+    h1 { margin: 8px 0 0; color: #0f172a; font-size: 36px; }
+    .intro { max-width: 680px; color: #475569; line-height: 1.6; }
+    .toolbar { display: flex; justify-content: space-between; gap: 16px; align-items: center; flex-wrap: wrap; }
+    h2 { margin: 0; color: #0f172a; font-size: 20px; }
+    .tabs { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { border: 1px solid #e2e8f0; border-radius: 999px; background: #fff; color: #475569; padding: 9px 14px; cursor: pointer; font-size: 14px; }
+    button.active { background: #0f172a; border-color: #0f172a; color: #fff; }
+    #list { display: grid; gap: 14px; margin-top: 22px; }
+    .card { border: 1px solid #e2e8f0; border-radius: 18px; padding: 20px; display: flex; justify-content: space-between; gap: 20px; }
+    .tags { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
+    .tag { background: #f1f5f9; border-radius: 999px; color: #475569; font-size: 12px; padding: 5px 9px; }
+    h3 { margin: 0; color: #0f172a; font-size: 18px; line-height: 1.45; }
+    .summary { margin: 8px 0 0; color: #475569; font-size: 14px; line-height: 1.55; }
+    .meta { white-space: nowrap; color: #64748b; font-size: 14px; }
+    .source { display: inline-block; margin-top: 14px; border: 1px solid #e2e8f0; border-radius: 999px; color: #334155; padding: 8px 12px; font-size: 13px; font-weight: 700; text-decoration: none; }
+    .empty, .loading { border: 1px dashed #cbd5e1; border-radius: 18px; background: #f8fafc; color: #64748b; padding: 42px 20px; text-align: center; }
+    .spinner { display: inline-block; width: 20px; height: 20px; margin-right: 9px; border: 2px solid #cbd5e1; border-top-color: #334155; border-radius: 50%; vertical-align: -5px; animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    @media (max-width: 640px) { .panel { padding: 22px; } h1 { font-size: 29px; } .card { flex-direction: column; } .meta { white-space: normal; } }
+  </style>
+</head>
+<body>
+  <main>
+    <section class="panel">
+      <p class="eyebrow">Research insights, simplified</p>
+      <h1>Research Hub</h1>
+      <p class="intro">KB경영연구소, 하나금융연구소, 금융위원회, 금융감독원의 최근 연구자료와 보도자료를 한곳에서 확인하는 오프라인 데모입니다.</p>
+    </section>
+    <section class="panel">
+      <div class="toolbar">
+        <div><h2>보고서 목록</h2><p class="intro">기관을 선택해 자료를 확인하세요.</p></div>
+        <div class="tabs" id="tabs"></div>
+      </div>
+      <div id="list" aria-live="polite"></div>
+    </section>
+  </main>
+  <script>
+    const reports = [
+      { organization: 'KB경영연구소', category: '연구보고서', title: 'KB 주택시장리뷰 - 2026년 7월호', summary: '주택시장 흐름과 금융시장 여건을 분석한 연구보고서입니다.', publishedAt: '2026-07-15', url: 'https://www.kbfg.com/kbresearch/report/reportView.do?reportId=2001340' },
+      { organization: 'KB경영연구소', category: '연구보고서', title: 'AI 시대, 인재상이 변하고 있다', summary: 'AI 확산이 금융산업의 인재와 업무 방식에 미치는 영향을 다룹니다.', publishedAt: '2026-07-14', url: 'https://www.kbfg.com/kbresearch/report/reportView.do?reportId=2000497' },
+      { organization: '하나금융연구소', category: '연구보고서', title: '(하나Knowledge+) AI, 자산관리의 지형을 바꾸다', summary: '생성형 AI 확산에 따른 자산관리 시장 변화와 국내 금융회사의 대응 방향을 분석합니다.', publishedAt: '2026-07-16', url: 'https://www.hanaif.re.kr/boardDetail.do?hmpeSeqNo=36991&menuId=MN1000&tabMenuId=N' },
+      { organization: '하나금융연구소', category: '연구보고서', title: 'HIF 월간 산업 이슈', summary: '주요 산업의 변화가 금융시장과 기업금융에 미치는 영향을 정리한 자료입니다.', publishedAt: '2026-07-06', url: 'https://www.hanaif.re.kr/boardList.do?menuId=MN1000&tabMenuId=N' },
+      { organization: '금융위원회', category: '보도자료', title: '전자금융감독규정 개정안 금융위 의결', summary: '지급결제와 금융플랫폼 관련 제도 개선 방향을 담은 정책 자료입니다.', publishedAt: '2026-07-15', url: 'https://www.fsc.go.kr/no010101' },
+      { organization: '금융위원회', category: '보도자료', title: '예금토큰 기반 지급결제 테스트 2단계 시행', summary: '디지털금융 환경에서 지급결제 혁신을 위한 제도 실험 내용을 안내합니다.', publishedAt: '2026-07-15', url: 'https://www.fsc.go.kr/no010101' },
+      { organization: '금융감독원', category: '보도자료', title: '국내은행의 원화대출 연체율 현황', summary: '국내은행 대출 건전성 지표와 연체율 변화를 점검한 감독 자료입니다.', publishedAt: '2026-07-22', url: 'https://www.fss.or.kr/fss/bbs/B0000188/list.do?menuNo=200218' },
+      { organization: '금융감독원', category: '보도자료', title: '금융회사 임직원의 금융소비자보호 역량 강화', summary: '금융회사 전반의 소비자보호 체계와 교육 강화를 위한 협력 내용을 다룹니다.', publishedAt: '2026-07-21', url: 'https://www.fss.or.kr/fss/bbs/B0000188/list.do?menuNo=200218' }
+    ];
+    const filters = ['전체', 'KB경영연구소', '하나금융연구소', '금융위원회', '금융감독원'];
+    let selected = '전체';
+    const tabs = document.getElementById('tabs');
+    const list = document.getElementById('list');
+
+    function renderTabs() {
+      tabs.innerHTML = filters.map(filter => `<button class="${filter === selected ? 'active' : ''}" data-filter="${filter}">${filter}</button>`).join('');
+      tabs.querySelectorAll('button').forEach(button => button.addEventListener('click', () => { selected = button.dataset.filter; renderTabs(); renderList(); }));
+    }
+    function renderList() {
+      const visible = reports.filter(report => selected === '전체' || report.organization === selected);
+      list.innerHTML = visible.length ? visible.map(report => `
+        <article class="card"><div><div class="tags"><span class="tag">${report.category}</span><span class="tag">${report.organization}</span></div><h3>${report.title}</h3><p class="summary">${report.summary}</p><a class="source" href="${report.url}" target="_blank" rel="noreferrer">원문보기</a></div><div class="meta">발간일: ${report.publishedAt}</div></article>`).join('') : '<div class="empty">보고서가 없습니다.</div>';
+    }
+    list.innerHTML = '<div class="loading"><span class="spinner"></span>보고서를 불러오는 중입니다...</div>';
+    renderTabs();
+    window.setTimeout(renderList, 250);
+  </script>
+</body>
+</html>
