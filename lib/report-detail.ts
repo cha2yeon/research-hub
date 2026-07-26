@@ -14,6 +14,18 @@ const DETAIL_SOURCES = {
     host: 'www.fss.or.kr',
     selectors: ['main .dbdata', 'main .view-content', 'main .board-view', 'main .bbs-view', 'main .view_cont', 'main .contents', 'main article'],
   },
+  '우리금융경영연구소': {
+    host: 'www.wfri.re.kr',
+    selectors: ['.content__report', 'main article', '#container article'],
+  },
+  '한국금융연구원': {
+    host: 'www.kif.re.kr',
+    selectors: ['.view_cont', '.board_view', 'main article', '#content'],
+  },
+  'KDB미래전략연구소': {
+    host: 'rd.kdb.co.kr',
+    selectors: ['#content', '.wrapper', 'main article'],
+  },
 } as const;
 
 type DetailOrganization = keyof typeof DETAIL_SOURCES;
@@ -33,6 +45,15 @@ function extractBlocks(root: Element): string {
     .filter((text, index, values) => text.length > 0 && values.indexOf(text) === index);
 
   return blocks.length > 0 ? blocks.join('\n\n') : cleanBlock(root.textContent || '');
+}
+
+function extractWfriBlocks(root: Element): string {
+  const excluded = /^(등록된 의견이 없습니다\.?|댓글\s*\d*|이전글|다음글|첨부파일|등록)$/;
+  const blocks = Array.from(root.querySelectorAll('p, li'))
+    .map((element) => cleanBlock(element.textContent || ''))
+    .filter((text, index, values) => text.length > 0 && !excluded.test(text) && values.indexOf(text) === index);
+
+  return blocks.length > 0 ? blocks.join('\n\n') : cleanBlock(root.textContent || '').replace(/등록된 의견이 없습니다\.?/g, '').trim();
 }
 
 function extractStructuredBlocks(root: Element): string {
@@ -81,12 +102,45 @@ function extractFscSummary(document: Document): string {
   return fallback ? extractBlocks(fallback) : '';
 }
 
+async function fetchKifSummary(url: URL): Promise<string> {
+  const params = new URLSearchParams({
+    ac: 'dataSearch',
+    mid: url.searchParams.get('mid') || '',
+    nid: '0',
+    vid: '0',
+    t1: '',
+    t2: '',
+    df: '',
+    dt: '',
+    kw: '',
+    pn: '1',
+    at: '0',
+    sfield: '',
+    pcnt: '10',
+    lang: '0',
+  });
+  const response = await fetch(`https://www.kif.re.kr/kif4/biz/async_proc?${params.toString()}`, {
+    headers: { Accept: 'application/json, text/javascript, */*; q=0.01', Referer: url.toString(), 'User-Agent': 'Mozilla/5.0', 'X-Requested-With': 'XMLHttpRequest' },
+    cache: 'no-store',
+  });
+  if (!response.ok) return '';
+
+  const payload = JSON.parse(await response.text()) as { datalist?: Array<{ cno?: string; hansummary?: string }> };
+  const summary = payload.datalist?.find((item) => item.cno === url.searchParams.get('cno'))?.hansummary || '';
+  return cleanBlock(new JSDOM(`<div>${summary}</div>`).window.document.body.textContent || '');
+}
+
 export async function fetchReportDetail(organization: string, rawUrl: string): Promise<string> {
   if (!(organization in DETAIL_SOURCES)) throw new Error('지원하지 않는 기관입니다.');
 
   const source = DETAIL_SOURCES[organization as DetailOrganization];
   const url = new URL(rawUrl);
   if (url.protocol !== 'https:' || url.hostname !== source.host) throw new Error('허용되지 않은 상세 URL입니다.');
+
+  if (organization === '한국금융연구원') {
+    const summary = await fetchKifSummary(url);
+    if (summary) return summary;
+  }
 
   const html = await fetchHtml(url.toString(), {
     headers: { 'User-Agent': 'Mozilla/5.0' },
@@ -103,5 +157,6 @@ export async function fetchReportDetail(organization: string, rawUrl: string): P
     .find((element): element is Element => Boolean(element));
   if (!root) return '';
 
+  if (source.host === 'www.wfri.re.kr') return extractWfriBlocks(root);
   return organization === '금융감독원' ? extractStructuredBlocks(root) : extractBlocks(root);
 }

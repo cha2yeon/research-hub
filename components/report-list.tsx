@@ -14,7 +14,7 @@ interface DetailState {
   error?: string;
 }
 
-const DETAIL_ORGANIZATIONS = new Set(['KB경영연구소', '하나금융연구소', '금융위원회', '금융감독원']);
+const DETAIL_ORGANIZATIONS = new Set(['KB경영연구소', '하나금융연구소', '금융위원회', '금융감독원', '우리금융경영연구소', '한국금융연구원', 'KDB미래전략연구소']);
 
 function createDisplaySummary(report: Report): string {
   const summary = report.summary?.replace(/\s+/g, ' ').trim();
@@ -30,6 +30,22 @@ function createDisplaySummary(report: Report): string {
     .map((sentence) => (/[.!?]$/.test(sentence) ? sentence : `${sentence}.`));
 
   return sentences.length > 1 ? sentences.join(' ') : summary;
+}
+
+function formatPublishedAt(report: Report): string {
+  return report.datePrecision === 'month' ? report.publishedAt.slice(0, 7) : report.publishedAt;
+}
+
+function formatDisplayTitle(report: Report): string {
+  if (report.organization !== 'KDB미래전략연구소') return report.title;
+
+  return report.title
+    .replace(/^\s*\[[^\]]*\]\s*/, '')
+    .replace(/^\s*\(제\s*\d+호\)\s*/, '')
+    .replace(/^산은조사월보\s*/, '')
+    .replace(/^(?:이슈분석|경제동향|산업동향)\s*[.:]\s*/, '')
+    .replace(/^[,.:]\s*/, '')
+    .trim();
 }
 
 export function ReportList({ reports, isLoading = false }: ReportListProps) {
@@ -60,9 +76,16 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
         const usesDetailCard = DETAIL_ORGANIZATIONS.has(report.organization);
         const isSummaryOpen = openSummaryKeys.has(reportKey);
         const detailState = detailStates[reportKey];
-        const summaryContent = detailState?.content || (report.organization === '하나금융연구소' ? report.summary || '' : '');
+        const summaryContent = detailState?.content || (
+          report.organization === '하나금융연구소' || report.organization === 'KDB미래전략연구소'
+            ? report.summary || ''
+            : ''
+        );
         const hasSummary = Boolean(summaryContent.trim());
         const summaryRegionId = `hana-summary-${report.id}-${reportKey.length}`;
+        const categoryBadgeClass = report.category === '보도자료'
+          ? 'border border-indigo-200 bg-indigo-50 text-indigo-700'
+          : 'border border-sky-200 bg-sky-50 text-sky-700';
         const toggleSummary = async () => {
           if (isSummaryOpen) {
             setOpenSummaryKeys((current) => {
@@ -75,6 +98,14 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
 
           setOpenSummaryKeys((current) => new Set(current).add(reportKey));
           if (hasSummary || detailState?.loading) return;
+
+          if (report.organization === 'KDB미래전략연구소') {
+            setDetailStates((current) => ({
+              ...current,
+              [reportKey]: { error: '제공된 요약이 없습니다.' },
+            }));
+            return;
+          }
 
           setDetailStates((current) => ({ ...current, [reportKey]: { loading: true } }));
           try {
@@ -96,17 +127,17 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
           <div className={usesDetailCard ? 'space-y-4' : 'flex flex-col gap-4 md:flex-row md:items-start md:justify-between'}>
             <div className={usesDetailCard ? 'space-y-4' : 'space-y-2'}>
               <div className="flex flex-wrap items-center gap-2">
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                <span className={`rounded-full px-3 py-1 text-xs font-medium ${categoryBadgeClass}`}>
                   {report.category}
                 </span>
-                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-medium text-slate-600">
+                <span className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
                   {report.organization}
                 </span>
               </div>
               <div className={usesDetailCard ? 'flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6' : undefined}>
-                <h3 className={usesDetailCard ? 'flex-1 text-lg font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>{report.title}</h3>
+                <h3 className={usesDetailCard ? 'flex-1 text-lg font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>{formatDisplayTitle(report)}</h3>
                 {usesDetailCard && (
-                  <span className="shrink-0 whitespace-nowrap text-sm text-slate-500">{report.publishedAt}</span>
+                  <span className="shrink-0 whitespace-nowrap text-sm text-slate-500">{formatPublishedAt(report)}</span>
                 )}
               </div>
               {usesDetailCard ? (
@@ -146,7 +177,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
 
             {!usesDetailCard && (
               <div className="flex flex-col items-start gap-3 md:items-end">
-                <span className="text-sm text-slate-500">발간일: {report.publishedAt}</span>
+                <span className="text-sm text-slate-500">발간일: {formatPublishedAt(report)}</span>
                 <a
                   href={report.url}
                   target="_blank"

@@ -2,7 +2,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Weekly Brief',
+  title: 'Research Hub',
   description: 'A minimalist research report hub MVP',
 };
 

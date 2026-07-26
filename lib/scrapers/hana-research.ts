@@ -4,8 +4,9 @@ import { fetchHtml } from '@/lib/scrapers/http';
 import { createRuleBasedSummary } from '@/lib/utils/rule-based-summary';
 
 const HANA_RESEARCH_URL = 'https://www.hanaif.re.kr/boardList.do?menuId=MN1000&tabMenuId=N';
+const HANA_PERIODIC_REPORT_URL = 'https://www.hanaif.re.kr/boardList.do?menuId=MN2000&tabMenuId=MN2100';
 const HANA_ORGANIZATION = '하나금융연구소';
-const HANA_CATEGORY = '연구보고서';
+const HANA_PERIODIC_EXCLUDED_TOPICS = ['종합', '금융지표', '논단'];
 
 type HanaReport = Omit<Report, 'summary'> & { summary: string; listSummary: string };
 
@@ -64,9 +65,9 @@ function isWithinLastMonth(publishedAt: string): boolean {
   return date >= startDate && date <= now;
 }
 
-export async function fetchHanaResearchReports(): Promise<Report[]> {
+async function fetchHanaReports(url: string, category: string, excludedTopics: string[] = []): Promise<HanaReport[]> {
   try {
-    const html = await fetchHtml(HANA_RESEARCH_URL, {
+    const html = await fetchHtml(url, {
       headers: {
         'User-Agent': 'Mozilla/5.0',
       },
@@ -85,12 +86,13 @@ export async function fetchHanaResearchReports(): Promise<Report[]> {
           return href.includes('boardDetail.do') || href.includes('hmpeSeqNo=');
         });
         const title = item.querySelector('p.tit')?.textContent?.trim() || '';
+        const topic = item.querySelector('strong.topic')?.textContent?.trim() || '';
         const listSummary = cleanSummary(item.querySelector('a.txtBox > div.txt')?.innerHTML || '');
         const textContent = item.textContent || '';
         const publishedAt = parseDate(textContent.match(/\d{4}[-.]\d{2}[-.]\d{2}|\d{4}년\s*\d{1,2}월\s*\d{1,2}일/)?.[0] || '');
         const href = detailLink?.getAttribute('href') || '';
 
-        if (!title || !publishedAt || !href) {
+        if (!title || !publishedAt || !href || excludedTopics.includes(topic)) {
           return null;
         }
 
@@ -102,7 +104,7 @@ export async function fetchHanaResearchReports(): Promise<Report[]> {
           title,
           summary: '',
           organization: HANA_ORGANIZATION,
-          category: HANA_CATEGORY,
+          category,
           publishedAt,
           url: normalizeUrl(href),
           listSummary,
@@ -111,21 +113,29 @@ export async function fetchHanaResearchReports(): Promise<Report[]> {
       .filter((report): report is HanaReport => report !== null);
 
     if (reports.length === 0) {
-      throw new Error('No reports parsed from Hana research page');
+      throw new Error(`No reports parsed from Hana ${category} page`);
     }
 
-    const recentReports = reports.filter((report) => isWithinLastMonth(report.publishedAt)).sort((left, right) => {
-      const leftDate = new Date(left.publishedAt);
-      const rightDate = new Date(right.publishedAt);
-      return Number.isNaN(rightDate.getTime()) ? 0 : rightDate.getTime() - leftDate.getTime();
-    });
-
-    return Promise.all(recentReports.map(async ({ listSummary, ...report }) => ({
-      ...report,
-      summary: await fetchSummary(report.url, report.title, listSummary),
-    })));
+    return reports;
   } catch (error) {
-    console.error('Hana research fetch failed:', error);
+    console.error(`Hana ${category} fetch failed:`, error);
     return [];
   }
+}
+
+export async function fetchHanaResearchReports(): Promise<Report[]> {
+  const reportGroups = await Promise.all([
+    fetchHanaReports(HANA_RESEARCH_URL, '연구보고서'),
+    fetchHanaReports(HANA_PERIODIC_REPORT_URL, '연구보고서', HANA_PERIODIC_EXCLUDED_TOPICS),
+  ]);
+
+  const recentReports = reportGroups
+    .flat()
+    .filter((report) => isWithinLastMonth(report.publishedAt))
+    .sort((left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime());
+
+  return Promise.all(recentReports.map(async ({ listSummary, ...report }) => ({
+    ...report,
+    summary: await fetchSummary(report.url, report.title, listSummary),
+  })));
 }

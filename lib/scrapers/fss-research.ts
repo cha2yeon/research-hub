@@ -63,14 +63,9 @@ function getPageUrl(page: number): string {
   return page === 1 ? FSS_RESEARCH_URL : `${FSS_RESEARCH_URL}&pageIndex=${page}`;
 }
 
-function isBankingRelevant(report: Report): boolean {
-  const text = `${report.title} ${report.summary || ''}`.toLowerCase();
-  const hasDirectBankingKeyword = BANKING_RELEVANCE_KEYWORDS.some((keyword) => text.includes(keyword));
-  const hasIndustryWideKeyword = INDUSTRY_WIDE_KEYWORDS.some((keyword) => text.includes(keyword));
-  const isSectorSpecific = SECTOR_SPECIFIC_EXCLUSION_KEYWORDS.some((keyword) => text.includes(keyword));
-  const isGeneralGuide = GENERAL_GUIDE_EXCLUSION_KEYWORDS.some((keyword) => text.includes(keyword));
-
-  return !isGeneralGuide && (hasDirectBankingKeyword || (hasIndustryWideKeyword && !isSectorSpecific));
+function shouldIncludeReport(report: Report): boolean {
+  const title = report.title.toLowerCase();
+  return !GENERAL_GUIDE_EXCLUSION_KEYWORDS.some((keyword) => title.includes(keyword.toLowerCase()));
 }
 
 function isWithinLastMonth(publishedAt: string): boolean {
@@ -502,13 +497,13 @@ export async function fetchFssResearchReports(): Promise<Report[]> {
         return 0;
       });
 
-    const relevantReports = sortedReports.filter(isBankingRelevant);
+    const includedReports = sortedReports.filter(shouldIncludeReport);
     if (process.env.NODE_ENV === 'development') {
       console.info(
-        `[${FSS_ORGANIZATION}] deduplicated=${reports.length} recentTotal=${sortedReports.length} filteredTotal=${relevantReports.length}`,
+        `[${FSS_ORGANIZATION}] deduplicated=${reports.length} recentTotal=${sortedReports.length} includedTotal=${includedReports.length}`,
       );
     }
-    const displayedReports = relevantReports.length > 0 ? relevantReports : sortedReports;
+    const displayedReports = includedReports.length > 0 ? includedReports : sortedReports;
     return displayedReports;
   } catch (error) {
     console.error('FSS research fetch failed:', error);

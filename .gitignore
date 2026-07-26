@@ -11,3 +11,5 @@ dist/
 api-response*.json
 inspect-*.js
 inspect-*.py
+
+.vercel

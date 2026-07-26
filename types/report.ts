@@ -7,5 +7,6 @@ export interface Report {
   category: string;
   summary?: string;
   publishedAt: string;
+  datePrecision?: 'day' | 'month';
   url: string;
 }
