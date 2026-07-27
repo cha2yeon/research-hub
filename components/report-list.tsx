@@ -33,7 +33,8 @@ function createDisplaySummary(report: Report): string {
 }
 
 function formatPublishedAt(report: Report): string {
-  return report.datePrecision === 'month' ? report.publishedAt.slice(0, 7) : report.publishedAt;
+  const date = report.datePrecision === 'month' ? report.publishedAt.slice(0, 7) : report.publishedAt;
+  return date.replace(/-/g, '.');
 }
 
 function formatDisplayTitle(report: Report): string {
@@ -130,6 +131,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${categoryBadgeClass}`}>
                   {report.category}
                 </span>
+                <span aria-hidden="true" className="text-xs text-slate-400">|</span>
                 <span className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
                   {report.organization}
                 </span>

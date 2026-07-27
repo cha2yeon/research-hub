@@ -160,7 +160,7 @@ export default function HomePage() {
               }}
             />
             {selectedFilter === '전체' && (
-              <div className="mt-1 flex flex-col items-start gap-2">
+              <div className="-mt-1 flex flex-col items-start gap-2">
                 <span className="text-sm font-medium text-slate-500">Category</span>
                 <div className="flex flex-wrap gap-1.5">
                   {(['전체', '연구보고서', '보도자료'] as ReportTypeFilter[]).map((type) => {
