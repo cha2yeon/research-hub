@@ -1,32 +1,40 @@
 'use client';
 
-import { FilterOption } from '@/types/report';
-
 interface ReportFilterTabsProps {
-  options: FilterOption[];
-  selected: FilterOption;
-  onSelect: (option: FilterOption) => void;
+  options: Array<{ value: string; label: string }>;
+  selected: string;
+  onSelect: (option: string) => void;
+  variant?: 'group' | 'institution';
+  showSeparators?: boolean;
 }
 
-export function ReportFilterTabsClient({ options, selected, onSelect }: ReportFilterTabsProps) {
+export function ReportFilterTabsClient({ options, selected, onSelect, variant = 'group', showSeparators = false }: ReportFilterTabsProps) {
+  const isPrimaryNavigation = variant === 'group';
+
   return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const isActive = option === selected;
+    <div className={`flex flex-wrap items-center ${
+      isPrimaryNavigation ? 'gap-x-10 text-lg' : showSeparators ? 'gap-x-3 text-[15px]' : 'gap-x-8 text-[15px]'
+    }`}
+    >
+      {options.map((option, index) => {
+        const isActive = option.value === selected;
+        const buttonClass = isActive
+          ? 'border-[#2F67C8] font-semibold text-[#2F67C8]'
+          : `${isPrimaryNavigation ? 'font-medium' : 'font-normal'} border-transparent text-slate-500 hover:text-slate-800`;
 
         return (
-          <button
-            key={option}
-            type="button"
-            onClick={() => onSelect(option)}
-            className={`rounded-full border px-4 py-2 text-sm font-medium transition ${
-              isActive
-                ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900'
-            }`}
-          >
-            {option}
-          </button>
+          <span key={option.value} className="flex items-center">
+            <button
+              type="button"
+              onClick={() => onSelect(option.value)}
+              className={`${isPrimaryNavigation ? 'border-b-[3px]' : 'border-b-2'} py-0.5 transition-colors duration-200 ${buttonClass}`}
+            >
+              {option.label}
+            </button>
+            {showSeparators && index < options.length - 1 && (
+              <span aria-hidden="true" className="ml-3 select-none text-slate-200">|</span>
+            )}
+          </span>
         );
       })}
     </div>

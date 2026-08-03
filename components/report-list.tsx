@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { getInstitutionDisplayName } from '@/lib/institution-groups';
 import { Report } from '@/types/report';
 
 interface ReportListProps {
@@ -14,12 +15,26 @@ interface DetailState {
   error?: string;
 }
 
-const DETAIL_ORGANIZATIONS = new Set(['KB경영연구소', '하나금융연구소', '금융위원회', '금융감독원', '우리금융경영연구소', '한국금융연구원', 'KDB미래전략연구소']);
+const DETAIL_ORGANIZATIONS = new Set([
+  'KB경영연구소',
+  '하나금융연구소',
+  '금융위원회',
+  '금융감독원',
+  '우리금융경영연구소',
+  '한국금융연구원',
+  'KDB미래전략연구소',
+  '한국은행',
+  'KDI(한국개발연구원)',
+  '산업통상자원부',
+  '중소벤처기업부',
+]);
+
+const LIST_SUMMARY_ONLY_ORGANIZATIONS = new Set(['KDI(한국개발연구원)']);
 
 function createDisplaySummary(report: Report): string {
   const summary = report.summary?.replace(/\s+/g, ' ').trim();
   if (!summary) {
-    return `${report.organization}에서 제공한 ${report.category} 자료입니다.`;
+    return `${getInstitutionDisplayName(report.organization)}에서 제공한 ${report.category} 자료입니다.`;
   }
 
   const sentences = summary
@@ -41,12 +56,19 @@ function formatDisplayTitle(report: Report): string {
   if (report.organization !== 'KDB미래전략연구소') return report.title;
 
   return report.title
+    .replace(/^\s*이슈브리프,\s*/, '')
     .replace(/^\s*\[[^\]]*\]\s*/, '')
     .replace(/^\s*\(제\s*\d+호\)\s*/, '')
     .replace(/^산은조사월보\s*/, '')
     .replace(/^(?:이슈분석|경제동향|산업동향)\s*[.:]\s*/, '')
     .replace(/^[,.:]\s*/, '')
     .trim();
+}
+
+function formatDisplayCategory(report: Report): string {
+  if (report.organization === 'KDB미래전략연구소') return '연구보고서';
+  if (report.organization === '산업통상자원부' && report.category === '참고자료') return '보도자료';
+  return report.category;
 }
 
 export function ReportList({ reports, isLoading = false }: ReportListProps) {
@@ -72,19 +94,25 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
 
   return (
     <div className="grid gap-4">
-      {reports.map((report) => {
-        const reportKey = `${report.id}-${report.title}-${report.organization}`;
-        const usesDetailCard = DETAIL_ORGANIZATIONS.has(report.organization);
+      {reports.map((report, index) => {
+        const reportKey = report.url
+          ? `${report.organization}:${report.url}:${index}`
+          : `${report.organization}:${report.id}:${report.title}:${report.publishedAt}:${index}`;
+        const isSharedReport = report.category === '공유';
+        const usesDetailCard = DETAIL_ORGANIZATIONS.has(report.organization) || isSharedReport;
         const isSummaryOpen = openSummaryKeys.has(reportKey);
         const detailState = detailStates[reportKey];
         const summaryContent = detailState?.content || (
-          report.organization === '하나금융연구소' || report.organization === 'KDB미래전략연구소'
-            ? report.summary || ''
+          report.organization === '하나금융연구소' ||
+          report.organization === 'KDB미래전략연구소' ||
+          LIST_SUMMARY_ONLY_ORGANIZATIONS.has(report.organization)
+            ? report.summary || createDisplaySummary(report)
             : ''
         );
         const hasSummary = Boolean(summaryContent.trim());
         const summaryRegionId = `hana-summary-${report.id}-${reportKey.length}`;
-        const categoryBadgeClass = report.category === '보도자료'
+        const displayCategory = formatDisplayCategory(report);
+        const categoryBadgeClass = displayCategory === '보도자료'
           ? 'border border-indigo-200 bg-indigo-50 text-indigo-700'
           : 'border border-sky-200 bg-sky-50 text-sky-700';
         const toggleSummary = async () => {
@@ -125,15 +153,15 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
           key={reportKey}
           className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
         >
-          <div className={usesDetailCard ? 'space-y-4' : 'flex flex-col gap-4 md:flex-row md:items-start md:justify-between'}>
-            <div className={usesDetailCard ? 'space-y-4' : 'space-y-2'}>
+          <div className={usesDetailCard ? 'space-y-3' : 'flex flex-col gap-3 md:flex-row md:items-start md:justify-between'}>
+            <div className={usesDetailCard ? 'space-y-3' : 'space-y-1.5'}>
               <div className="flex flex-wrap items-center gap-2">
                 <span className={`rounded-full px-3 py-1 text-xs font-medium ${categoryBadgeClass}`}>
-                  {report.category}
+                  {displayCategory}
                 </span>
                 <span aria-hidden="true" className="text-xs text-slate-400">|</span>
                 <span className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">
-                  {report.organization}
+                  {getInstitutionDisplayName(report.organization)}
                 </span>
               </div>
               <div className={usesDetailCard ? 'flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6' : undefined}>
@@ -144,7 +172,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
               </div>
               {usesDetailCard ? (
                 <>
-                  <div className="flex flex-wrap items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-2">
                     <a
                       href={report.url}
                       target="_blank"
@@ -153,7 +181,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                     >
                       원문보기
                     </a>
-                    <button
+                    {!isSharedReport && <button
                         type="button"
                         onClick={toggleSummary}
                         aria-expanded={isSummaryOpen}
@@ -161,7 +189,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                         className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ${isSummaryOpen ? 'border-slate-400 bg-slate-100 text-slate-800' : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'}`}
                       >
                         {isSummaryOpen ? '접기' : '요약보기'}
-                      </button>
+                    </button>}
                     
                   </div>
                   {isSummaryOpen && (
@@ -178,7 +206,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
             </div>
 
             {!usesDetailCard && (
-              <div className="flex flex-col items-start gap-3 md:items-end">
+              <div className="flex flex-col items-start gap-2 md:items-end">
                 <span className="text-sm text-slate-500">발간일: {formatPublishedAt(report)}</span>
                 <a
                   href={report.url}

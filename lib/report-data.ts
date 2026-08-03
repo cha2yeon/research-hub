@@ -1,7 +1,14 @@
 import { reports as fallbackReports } from '@/data/reports';
 import { Report } from '@/types/report';
 
-export async function getReportsForDisplay(): Promise<Report[]> {
+export type ReportCacheState = 'fresh' | 'stale' | 'refreshing' | 'empty' | null;
+
+export interface ReportsForDisplayResult {
+  reports: Report[];
+  cacheState: ReportCacheState;
+}
+
+export async function getReportsForDisplay(): Promise<ReportsForDisplayResult> {
   try {
     const response = await fetch('/api/reports', {
       cache: 'no-store',
@@ -12,9 +19,13 @@ export async function getReportsForDisplay(): Promise<Report[]> {
     }
 
     const data = (await response.json()) as Report[];
-    return data.length > 0 ? data : fallbackReports;
+    const cacheState = response.headers.get('X-Report-Cache') as ReportCacheState;
+    return {
+      reports: data.length > 0 ? data : fallbackReports,
+      cacheState,
+    };
   } catch (error) {
     console.error(error);
-    return fallbackReports;
+    return { reports: fallbackReports, cacheState: null };
   }
 }

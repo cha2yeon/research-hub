@@ -170,7 +170,7 @@ export async function fetchFscResearchReports(): Promise<Report[]> {
       throw new Error('No reports parsed from FSC page');
     }
 
-    const sortedReports = reports.sort((left, right) => {
+    const sortedReports = [...reports].sort((left, right) => {
       const leftDate = new Date(left.publishedAt);
       const rightDate = new Date(right.publishedAt);
       return Number.isNaN(rightDate.getTime()) ? 0 : rightDate.getTime() - leftDate.getTime();

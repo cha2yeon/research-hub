@@ -1,4 +1,5 @@
 import { JSDOM } from 'jsdom';
+import { extractPdfText } from '@/lib/pdf-extraction';
 import { fetchHtml } from '@/lib/scrapers/http';
 
 const DETAIL_SOURCES = {
@@ -26,6 +27,22 @@ const DETAIL_SOURCES = {
     host: 'rd.kdb.co.kr',
     selectors: ['#content', '.wrapper', 'main article'],
   },
+  '한국은행': {
+    host: 'www.bok.or.kr',
+    selectors: ['.bd-view .view-content', '.bd-view .viewCont', '.bd-view .contents', '.bd-view article'],
+    pdfFallback: {
+      attachmentSelectors: ['.down-set a[href*=".pdf"]', 'a[href*=".pdf"]'],
+      allowedHosts: ['www.bok.or.kr', 'file-cdn.bok.or.kr'],
+    },
+  },
+  '산업통상자원부': {
+    host: 'www.motie.go.kr',
+    selectors: ['.detail-cont.mViewerContents'],
+  },
+  '중소벤처기업부': {
+    host: 'www.mss.go.kr',
+    selectors: ['.view_contents', '.txt-area'],
+  },
 } as const;
 
 type DetailOrganization = keyof typeof DETAIL_SOURCES;
@@ -45,6 +62,14 @@ function extractBlocks(root: Element): string {
     .filter((text, index, values) => text.length > 0 && values.indexOf(text) === index);
 
   return blocks.length > 0 ? blocks.join('\n\n') : cleanBlock(root.textContent || '');
+}
+
+function extractMssBlocks(root: Element): string {
+  const rawHtml = root.querySelector<HTMLTextAreaElement>('#editContents')?.value;
+  if (!rawHtml) return extractBlocks(root);
+
+  const contentDocument = new JSDOM(`<div>${rawHtml}</div>`).window.document;
+  return extractBlocks(contentDocument.body);
 }
 
 function extractWfriBlocks(root: Element): string {
@@ -130,6 +155,23 @@ async function fetchKifSummary(url: URL): Promise<string> {
   return cleanBlock(new JSDOM(`<div>${summary}</div>`).window.document.body.textContent || '');
 }
 
+function findPdfAttachmentUrl(document: Document, pageUrl: URL, selectors: readonly string[], allowedHosts: readonly string[]): string | null {
+  for (const selector of selectors) {
+    const anchor = document.querySelector<HTMLAnchorElement>(selector);
+    const href = anchor?.getAttribute('href');
+    if (!href) continue;
+
+    try {
+      const pdfUrl = new URL(href, pageUrl);
+      if (pdfUrl.protocol === 'https:' && allowedHosts.includes(pdfUrl.hostname)) return pdfUrl.toString();
+    } catch {
+      // Try the next attachment candidate.
+    }
+  }
+
+  return null;
+}
+
 export async function fetchReportDetail(organization: string, rawUrl: string): Promise<string> {
   if (!(organization in DETAIL_SOURCES)) throw new Error('지원하지 않는 기관입니다.');
 
@@ -155,8 +197,38 @@ export async function fetchReportDetail(organization: string, rawUrl: string): P
   const root = source.selectors
     .map((selector) => document.querySelector(selector))
     .find((element): element is Element => Boolean(element));
-  if (!root) return '';
 
-  if (source.host === 'www.wfri.re.kr') return extractWfriBlocks(root);
-  return organization === '금융감독원' ? extractStructuredBlocks(root) : extractBlocks(root);
+  if (root) {
+    const htmlContent = source.host === 'www.wfri.re.kr'
+      ? extractWfriBlocks(root)
+      : organization === '중소벤처기업부'
+        ? extractMssBlocks(root)
+        : organization === '금융감독원'
+          ? extractStructuredBlocks(root)
+          : extractBlocks(root);
+    if (htmlContent) return htmlContent;
+  }
+
+  if ('pdfFallback' in source) {
+    const pdfUrl = findPdfAttachmentUrl(document, url, source.pdfFallback.attachmentSelectors, source.pdfFallback.allowedHosts);
+    if (pdfUrl) {
+      const result = await extractPdfText(pdfUrl, {
+        allowedHosts: source.pdfFallback.allowedHosts,
+        pageSelection: { initialPageCount: 1, fallbackPageCount: 2, minimumLength: 300 },
+        cleaning: {
+          removePressReleaseLabel: true,
+          removeBokMetadata: true,
+          removeTitlePrefix: true,
+          joinSingleSyllableBreaks: true,
+          documentTitle: cleanBlock(document.querySelector('.bd-view .subject')?.textContent || ''),
+          bodyStartPatterns: ['□', '■', 'Ⅰ.', '1.'],
+          stopAfterMarkers: ['붙임', '참고', '별첨'],
+        },
+      });
+      if (result.success) return result.text;
+      console.warn(`[${organization}] PDF detail extraction failed: ${result.error}`);
+    }
+  }
+
+  return '';
 }

@@ -3,10 +3,21 @@
 import { ReportList } from '@/components/report-list';
 import { ReportFilterTabsClient } from '@/components/report-filter-tabs-client';
 import { ReportSearchBarClient } from '@/components/report-search-bar-client';
+import { SharedReportsSection } from '@/components/shared-reports-section';
+import {
+  getInstitutionDisplayName,
+  getOrganizationNamesForGroup,
+  INSTITUTION_GROUP_OPTIONS,
+  InstitutionGroup,
+} from '@/lib/institution-groups';
 import { getReportsForDisplay } from '@/lib/report-data';
-import { FilterOption } from '@/types/report';
+import { Report } from '@/types/report';
+import { SharedReport, toDisplayReport } from '@/types/shared-report';
 import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
+
+const REPORT_POLL_INTERVAL_MS = 3_000;
+const REPORT_POLL_MAX_DURATION_MS = 30_000;
 
 function normalizeFilterValue(value: string): string {
   return value.replace(/\s+/g, '').toLowerCase();
@@ -23,74 +34,130 @@ function compareReportsByDate(left: { publishedAt: string; datePrecision?: 'day'
   return new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime();
 }
 
-const FILTER_ORDER = [
-  'KB경영연구소',
-  '하나금융연구소',
-  '우리금융경영연구소',
-  'KDB미래전략연구소',
-  '한국금융연구원',
-  '금융위원회',
-  '금융감독원',
-];
+function reportIdentity(report: Report): string {
+  return report.url
+    ? `${report.organization}:url:${report.url}`
+    : `${report.organization}:id:${report.id}:${report.title}:${report.publishedAt}`;
+}
+
+function countNewReports(currentReports: Report[], latestReports: Report[]): number {
+  const currentKeys = new Set(currentReports.map(reportIdentity));
+  return latestReports.filter((report) => !currentKeys.has(reportIdentity(report))).length;
+}
 
 type ReportTypeFilter = '전체' | '연구보고서' | '보도자료';
 
 export default function HomePage() {
-  const [reports, setReports] = useState<any[]>([]);
+  const [reports, setReports] = useState<Report[]>([]);
   const [isLoadingReports, setIsLoadingReports] = useState(true);
+  const [pendingReports, setPendingReports] = useState<Report[] | null>(null);
+  const [newReportCount, setNewReportCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<FilterOption>('전체');
-  const [filterOptions, setFilterOptions] = useState<FilterOption[]>(['전체']);
+  const [selectedGroup, setSelectedGroup] = useState<InstitutionGroup>('전체');
+  const [selectedInstitution, setSelectedInstitution] = useState('전체');
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeFilter>('전체');
+  const [sharedReports, setSharedReports] = useState<SharedReport[]>([]);
 
   useEffect(() => {
-    async function loadOrganizations() {
-      try {
-        const response = await fetch('/api/reports/organizations', { cache: 'no-store' });
-        if (!response.ok) {
-          throw new Error('Failed to load organizations');
-        }
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setTimeout> | undefined;
 
-        const organizations = (await response.json()) as string[];
-        const orderedOrganizations = [
-          ...FILTER_ORDER.filter((organization) => organizations.includes(organization)),
-          ...organizations.filter((organization) => !FILTER_ORDER.includes(organization)),
-        ];
-        setFilterOptions(['전체', ...orderedOrganizations] as FilterOption[]);
-      } catch (error) {
-        console.error(error);
-        setFilterOptions(['전체'] as FilterOption[]);
-      }
-    }
-
-    loadOrganizations();
-  }, []);
-
-  useEffect(() => {
     async function loadReports() {
       try {
-        const data = await getReportsForDisplay();
-        setReports(data);
+        const initialResult = await getReportsForDisplay();
+        if (cancelled) return;
+
+        setReports([...initialResult.reports]);
+
+        if (initialResult.cacheState !== 'stale') return;
+
+        const pollingStartedAt = Date.now();
+        const pollForFreshReports = async () => {
+          if (cancelled || Date.now() - pollingStartedAt >= REPORT_POLL_MAX_DURATION_MS) return;
+
+          const latestResult = await getReportsForDisplay();
+          if (cancelled) return;
+
+          if (latestResult.cacheState === 'fresh') {
+            const addedReportCount = countNewReports(initialResult.reports, latestResult.reports);
+            if (addedReportCount > 0) {
+              setPendingReports([...latestResult.reports]);
+              setNewReportCount(addedReportCount);
+            }
+            return;
+          }
+
+          if (Date.now() - pollingStartedAt < REPORT_POLL_MAX_DURATION_MS) {
+            pollTimer = setTimeout(pollForFreshReports, REPORT_POLL_INTERVAL_MS);
+          }
+        };
+
+        pollTimer = setTimeout(pollForFreshReports, REPORT_POLL_INTERVAL_MS);
       } finally {
-        setIsLoadingReports(false);
+        if (!cancelled) setIsLoadingReports(false);
       }
     }
 
     loadReports();
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearTimeout(pollTimer);
+    };
   }, []);
 
-  const filteredReports = useMemo(() => {
-    const normalizedSelectedFilter = normalizeFilterValue(selectedFilter);
+  useEffect(() => {
+    let cancelled = false;
 
-    const matchedReports = reports.filter((report) => {
-      const matchesFilter =
-        selectedFilter === '전체' || normalizeFilterValue(report.organization) === normalizedSelectedFilter;
+    fetch('/api/shared-reports', { cache: 'no-store' })
+      .then(async (response) => {
+        const payload = await response.json() as SharedReport[] | { message?: string };
+        if (!response.ok || !Array.isArray(payload)) throw new Error('Failed to load shared reports');
+        if (!cancelled) setSharedReports(payload);
+      })
+      .catch(() => {
+        // Shared reports are optional in the unified list. Keep general reports available on failure.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const showLatestReports = () => {
+    if (pendingReports) setReports([...pendingReports]);
+    setPendingReports(null);
+    setNewReportCount(0);
+  };
+
+  const dismissLatestReports = () => {
+    setPendingReports(null);
+    setNewReportCount(0);
+  };
+
+  const filteredReports = useMemo(() => {
+    const reportsForDisplay = selectedGroup === '전체'
+      ? [...reports, ...sharedReports.map(toDisplayReport)]
+      : reports;
+    const groupOrganizations = getOrganizationNamesForGroup(selectedGroup);
+    const reportsForSelectedGroup = selectedGroup === '전체'
+      ? reportsForDisplay
+      : reportsForDisplay.filter((report) => groupOrganizations.includes(report.organization));
+    const reportsForSelectedInstitution = selectedInstitution === '전체'
+      ? reportsForSelectedGroup
+      : reportsForSelectedGroup.filter(
+        (report) => normalizeFilterValue(report.organization) === normalizeFilterValue(selectedInstitution),
+      );
+
+    const matchedReports = reportsForSelectedInstitution.filter((report) => {
+      const reportCategory = report.organization === '산업통상자원부' && report.category === '참고자료'
+        ? '보도자료'
+        : report.category;
       const matchesReportType =
-        selectedFilter !== '전체' ||
         selectedReportType === '전체' ||
-        (selectedReportType === '보도자료'
-          ? report.category === '보도자료'
-          : report.category !== '보도자료');
+        (reportCategory !== '공유' && (selectedReportType === '보도자료'
+          ? reportCategory === '보도자료'
+          : reportCategory !== '보도자료'));
 
       const keyword = searchQuery.trim().toLowerCase();
       const matchesSearch =
@@ -98,13 +165,24 @@ export default function HomePage() {
         report.title.toLowerCase().includes(keyword) ||
         report.organization.toLowerCase().includes(keyword);
 
-      return matchesFilter && matchesReportType && matchesSearch;
+      return matchesReportType && matchesSearch;
     });
 
-    return selectedFilter === '전체'
-      ? matchedReports.sort(compareReportsByDate)
-      : matchedReports;
-  }, [reports, searchQuery, selectedFilter, selectedReportType]);
+    const sortedReports = [...matchedReports].sort(compareReportsByDate);
+
+    return sortedReports;
+  }, [reports, searchQuery, selectedGroup, selectedInstitution, selectedReportType, sharedReports]);
+
+  const institutionOptions = useMemo(() => [
+    { value: '전체', label: '전체' },
+    ...getOrganizationNamesForGroup(selectedGroup).map((organization) => ({
+      value: organization,
+      label: getInstitutionDisplayName(organization),
+    })),
+  ], [selectedGroup]);
+
+  const isSharedReportsSelected = selectedGroup === '기타' && selectedInstitution === '공유 보고서';
+  const isAllOtherSourcesSelected = selectedGroup === '기타' && selectedInstitution === '전체';
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-800 sm:px-6 lg:px-8">
@@ -143,56 +221,96 @@ export default function HomePage() {
           </div>
         </header>
 
+        {pendingReports && newReportCount > 0 && (
+          <div className="fixed left-1/2 top-6 z-[1000] flex min-h-12 w-fit max-w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-5 rounded-2xl border border-slate-200 bg-white px-8 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] sm:px-9">
+            <p className="text-[15px] font-normal text-slate-700">
+              <span className="mr-1 inline-block scale-[1.08]">📄</span> 최신 보고서 {newReportCount}건이 추가되었습니다.
+            </p>
+            <div className="flex shrink-0 items-center gap-2">
+              <button
+                type="button"
+                onClick={showLatestReports}
+                className="rounded-lg bg-[#EAF2FF] px-3 py-1.5 text-sm font-medium text-[#2F67C8] transition-colors duration-200 hover:bg-[#DCEAFF] active:bg-[#CFE1FF]"
+              >
+                최신 목록 보기
+              </button>
+              <button
+                type="button"
+                onClick={dismissLatestReports}
+                className="rounded-lg p-1.5 text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                aria-label="최신 보고서 알림 닫기"
+              >
+                ×
+              </button>
+            </div>
+          </div>
+        )}
+
         <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-5 flex flex-col gap-3">
-            <div>
-              <h2 className="text-lg font-semibold text-slate-900">보고서 목록</h2>
-              <p className="text-sm text-slate-500">
-                연구보고서는 최근 4주, 보도자료는 최근 2주 이내 자료를 제공합니다.
+          <div className="mb-3 flex flex-col gap-3.5">
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
+              <h2 className="text-2xl font-bold text-slate-900">보고서 목록</h2>
+              <p className="text-[13px] font-normal text-slate-500 sm:text-sm">
+                ⓘ 최근 4주 연구보고서 · 최근 2주 보도자료
               </p>
             </div>
             <ReportFilterTabsClient
-              options={filterOptions}
-              selected={selectedFilter}
-              onSelect={(option) => {
-                setSelectedFilter(option);
+              options={INSTITUTION_GROUP_OPTIONS}
+              selected={selectedGroup}
+              variant="group"
+              onSelect={(group) => {
+                setSelectedGroup(group as InstitutionGroup);
+                setSelectedInstitution('전체');
                 setSelectedReportType('전체');
               }}
             />
-            {selectedFilter === '전체' && (
-              <div className="-mt-1 flex flex-col items-start gap-2">
-                <span className="text-sm font-medium text-slate-500">Category</span>
-                <div className="flex flex-wrap gap-1.5">
-                  {(['전체', '연구보고서', '보도자료'] as ReportTypeFilter[]).map((type) => {
-                    const isActive = type === selectedReportType;
-                    const categoryButtonClass = type === '연구보고서'
-                      ? isActive
-                        ? 'border-sky-200 bg-sky-50 text-sky-700'
-                        : 'border-sky-200 bg-white text-sky-700 hover:bg-sky-50'
-                      : type === '보도자료'
-                        ? isActive
-                          ? 'border-indigo-200 bg-indigo-50 text-indigo-700'
-                          : 'border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50'
-                        : isActive
-                          ? 'border-slate-900 bg-slate-900 text-white shadow-sm'
-                          : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-900';
-                    return (
+            <div className="-mt-1 mb-0 h-px w-full bg-slate-200/70" />
+            <div className="flex min-h-[26px] w-full items-start">
+              {selectedGroup !== '전체' ? (
+                <ReportFilterTabsClient
+                  options={institutionOptions}
+                  selected={selectedInstitution}
+                  onSelect={setSelectedInstitution}
+                  variant="institution"
+                  showSeparators
+                />
+              ) : (
+                <div className="flex flex-wrap items-center gap-x-3 text-[15px]">
+                {(['전체', '연구보고서', '보도자료'] as ReportTypeFilter[]).map((type, index, types) => {
+                  const isActive = type === selectedReportType;
+                  return (
+                    <span key={type} className="flex items-center gap-x-3">
                       <button
-                        key={type}
                         type="button"
                         onClick={() => setSelectedReportType(type)}
-                        className={`rounded-full border px-3 py-1 text-[13px] font-medium transition ${categoryButtonClass}`}
+                        className={`border-b-2 py-0.5 transition-colors duration-200 ${
+                          isActive
+                            ? 'border-[#2F67C8] font-semibold text-[#2F67C8]'
+                            : 'border-transparent font-normal text-slate-500 hover:border-slate-400 hover:text-slate-800'
+                        }`}
                       >
                         {type}
                       </button>
-                    );
-                  })}
+                      {index < types.length - 1 && (
+                        <span aria-hidden="true" className="select-none text-slate-200">│</span>
+                      )}
+                    </span>
+                  );
+                })}
                 </div>
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
-          <ReportList reports={filteredReports} isLoading={isLoadingReports} />
+          {isSharedReportsSelected || isAllOtherSourcesSelected ? (
+            <SharedReportsSection searchQuery="" />
+          ) : (
+            <ReportList
+              key={`${selectedGroup}:${selectedInstitution}`}
+              reports={filteredReports}
+              isLoading={isLoadingReports}
+            />
+          )}
         </section>
       </div>
     </main>

@@ -134,8 +134,8 @@ export async function fetchHanaResearchReports(): Promise<Report[]> {
     .filter((report) => isWithinLastMonth(report.publishedAt))
     .sort((left, right) => new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime());
 
-  return Promise.all(recentReports.map(async ({ listSummary, ...report }) => ({
+  return recentReports.map(({ listSummary, ...report }) => ({
     ...report,
-    summary: await fetchSummary(report.url, report.title, listSummary),
-  })));
+    summary: listSummary || createRuleBasedSummary('', report.title),
+  }));
 }
