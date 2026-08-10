@@ -136,13 +136,16 @@ export default function HomePage() {
   };
 
   const filteredReports = useMemo(() => {
-    const reportsForDisplay = selectedGroup === '전체'
+    const reportsForDisplay = selectedGroup === '전체' || selectedGroup === '기타'
       ? [...reports, ...sharedReports.map(toDisplayReport)]
       : reports;
     const groupOrganizations = getOrganizationNamesForGroup(selectedGroup);
     const reportsForSelectedGroup = selectedGroup === '전체'
       ? reportsForDisplay
-      : reportsForDisplay.filter((report) => groupOrganizations.includes(report.organization));
+      : reportsForDisplay.filter((report) =>
+        groupOrganizations.includes(report.organization) ||
+        (selectedGroup === '기타' && report.category === '공유'),
+      );
     const reportsForSelectedInstitution = selectedInstitution === '전체'
       ? reportsForSelectedGroup
       : reportsForSelectedGroup.filter(
@@ -182,7 +185,6 @@ export default function HomePage() {
   ], [selectedGroup]);
 
   const isSharedReportsSelected = selectedGroup === '기타' && selectedInstitution === '공유 보고서';
-  const isAllOtherSourcesSelected = selectedGroup === '기타' && selectedInstitution === '전체';
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-800 sm:px-6 lg:px-8">
@@ -302,7 +304,7 @@ export default function HomePage() {
             </div>
           </div>
 
-          {isSharedReportsSelected || isAllOtherSourcesSelected ? (
+          {isSharedReportsSelected ? (
             <SharedReportsSection searchQuery="" />
           ) : (
             <ReportList

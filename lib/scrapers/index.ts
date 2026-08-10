@@ -9,6 +9,9 @@ import { fetchKoreaBankReports } from '@/lib/scrapers/bok-research';
 import { fetchKdiReports } from '@/lib/scrapers/kdi-research';
 import { fetchMotieReports } from '@/lib/scrapers/motie-research';
 import { fetchMssReports } from '@/lib/scrapers/mss-research';
+import { fetchKietResearchReports } from '@/lib/scrapers/kiet-research';
+import { fetchMofePressReleases } from '@/lib/scrapers/mofe-research';
+import { fetchEyResearchReports } from '@/lib/scrapers/ey-research';
 import { Report } from '@/types/report';
 
 export interface ScraperDefinition {
@@ -78,6 +81,21 @@ export const scraperRegistry: ScraperDefinition[] = [
     id: 'mss',
     organization: '중소벤처기업부',
     fetchReports: fetchMssReports,
+  },
+  {
+    id: 'kiet',
+    organization: 'KIET 산업연구원',
+    fetchReports: fetchKietResearchReports,
+  },
+  {
+    id: 'mofe',
+    organization: '재정경제부',
+    fetchReports: fetchMofePressReleases,
+  },
+  {
+    id: 'ey',
+    organization: 'EY한영',
+    fetchReports: fetchEyResearchReports,
   },
 ];
 

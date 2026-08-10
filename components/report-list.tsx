@@ -27,9 +27,12 @@ const DETAIL_ORGANIZATIONS = new Set([
   'KDI(한국개발연구원)',
   '산업통상자원부',
   '중소벤처기업부',
+  'KIET 산업연구원',
+  '재정경제부',
+  'EY한영',
 ]);
 
-const LIST_SUMMARY_ONLY_ORGANIZATIONS = new Set(['KDI(한국개발연구원)']);
+const LIST_SUMMARY_ONLY_ORGANIZATIONS = new Set(['KDI(한국개발연구원)', 'KIET 산업연구원']);
 
 function createDisplaySummary(report: Report): string {
   const summary = report.summary?.replace(/\s+/g, ' ').trim();

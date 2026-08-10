@@ -6,6 +6,12 @@ const CACHE_TTL_MS = 10 * 60 * 1000;
 
 export type ReportCacheState = 'fresh' | 'stale' | 'empty' | 'refreshing';
 
+export interface ReportsWithCacheState {
+  reports: Report[];
+  state: ReportCacheState;
+  refreshPromise?: Promise<Report[]>;
+}
+
 interface CachedReports {
   reports: Report[];
   updatedAt: string;
@@ -56,10 +62,8 @@ function deduplicateReports(reports: Report[]): Report[] {
   return sortReports(Array.from(byKey.values()));
 }
 
-function mergeOrganizationReports(previous: Report[], fresh: Report[]): Report[] {
-  const byKey = new Map(previous.map((report) => [reportKey(report), report]));
-  fresh.forEach((report) => byKey.set(reportKey(report), report));
-  return Array.from(byKey.values());
+function replaceOrganizationReports(fresh: Report[]): Report[] {
+  return deduplicateReports(fresh);
 }
 
 async function readPersistentCache(): Promise<CachedReports | null> {
@@ -97,11 +101,24 @@ async function writePersistentCache(entry: CachedReports): Promise<void> {
 }
 
 async function getCachedReports(): Promise<CachedReports | null> {
-  if (cache.entry) return cache.entry;
+  if (cache.entry) {
+    console.info('[report-cache] memory cache hit', { updatedAt: cache.entry.updatedAt, reportCount: cache.entry.reports.length });
+    return cache.entry;
+  }
+
+  if (!getSupabaseConfig()) {
+    console.warn('[report-cache] persistent cache is unavailable because Supabase configuration is missing.');
+    return null;
+  }
 
   try {
     const entry = await readPersistentCache();
-    if (entry) cache.entry = entry;
+    if (entry) {
+      cache.entry = entry;
+      console.info('[report-cache] persistent cache hit', { updatedAt: entry.updatedAt, reportCount: entry.reports.length });
+    } else {
+      console.info('[report-cache] persistent cache miss');
+    }
     return entry;
   } catch (error) {
     console.error('Report cache read failed; using in-memory cache only:', error);
@@ -132,8 +149,10 @@ async function refreshReports(previousReports: Report[]): Promise<Report[]> {
       continue;
     }
 
+    const replacement = replaceOrganizationReports(result.reports);
     refreshedOrganizationCount += 1;
-    mergedByOrganization.set(result.organization, mergeOrganizationReports(previous, result.reports));
+    mergedByOrganization.set(result.organization, replacement);
+    console.info(`[${result.organization}] cache refreshed: previous=${previous.length} fresh=${result.reports.length} final=${replacement.length}`);
   }
 
   const mergedReports = deduplicateReports(Array.from(mergedByOrganization.values()).flat());
@@ -147,6 +166,7 @@ async function refreshReports(previousReports: Report[]): Promise<Report[]> {
   console.info(`Report cache refresh completed: ${refreshedOrganizationCount} institutions, ${mergedReports.length} reports.`);
   try {
     await writePersistentCache(entry);
+    console.info('[report-cache] persistent cache write completed', { updatedAt: entry.updatedAt, reportCount: entry.reports.length });
   } catch (error) {
     console.error('Report cache write failed; retaining in-memory cache:', error);
   }
@@ -164,20 +184,27 @@ function startRefresh(previousReports: Report[]): Promise<Report[]> {
       .finally(() => {
         cache.refreshPromise = undefined;
       });
+  } else {
+    console.info('[report-cache] refresh already in progress; reusing the existing promise.');
   }
   return cache.refreshPromise;
 }
 
-export async function getReportsWithStaleWhileRevalidate(): Promise<{ reports: Report[]; state: ReportCacheState }> {
+export async function getReportsWithStaleWhileRevalidate(): Promise<ReportsWithCacheState> {
   const entry = await getCachedReports();
   if (!entry) {
     const reports = await startRefresh([]);
+    console.info('[report-cache] returning empty-cache refresh result', { reportCount: reports.length });
     return { reports, state: 'empty' };
   }
 
-  if (isFresh(entry)) return { reports: entry.reports, state: 'fresh' };
+  if (isFresh(entry)) {
+    console.info('[report-cache] returning fresh cache', { reportCount: entry.reports.length });
+    return { reports: entry.reports, state: 'fresh' };
+  }
 
   const state: ReportCacheState = cache.refreshPromise ? 'refreshing' : 'stale';
-  void startRefresh(entry.reports);
-  return { reports: entry.reports, state };
+  const refreshPromise = startRefresh(entry.reports);
+  console.info('[report-cache] returning stale cache and scheduling refresh', { state, reportCount: entry.reports.length });
+  return { reports: entry.reports, state, refreshPromise };
 }

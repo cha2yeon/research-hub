@@ -4,12 +4,14 @@ export const INSTITUTION_GROUPS = {
     { organization: '금융감독원', label: '금융감독원' },
     { organization: '산업통상자원부', label: '산업통상부' },
     { organization: '중소벤처기업부', label: '중소벤처기업부' },
+    { organization: '재정경제부', label: '재정경제부' },
   ],
   정책연구기관: [
     { organization: '한국은행', label: '한국은행' },
     { organization: 'KDI(한국개발연구원)', label: 'KDI' },
     { organization: 'KDB미래전략연구소', label: 'KDB미래전략연구소' },
     { organization: '한국금융연구원', label: '한국금융연구원' },
+    { organization: 'KIET 산업연구원', label: 'KIET 산업연구원' },
   ],
   민간연구기관: [
     { organization: 'KB경영연구소', label: 'KB경영연구소' },
@@ -17,6 +19,7 @@ export const INSTITUTION_GROUPS = {
     { organization: '우리금융경영연구소', label: '우리금융경영연구소' },
   ],
   기타: [
+    { organization: 'EY한영', label: 'EY한영' },
     { organization: '공유 보고서', label: '공유 보고서' },
   ],
 } as const;
