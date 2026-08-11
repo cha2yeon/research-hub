@@ -52,6 +52,7 @@ export default function HomePage() {
   const [isLoadingReports, setIsLoadingReports] = useState(true);
   const [pendingReports, setPendingReports] = useState<Report[] | null>(null);
   const [newReportCount, setNewReportCount] = useState(0);
+  const [isRefreshingLatestReports, setIsRefreshingLatestReports] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedGroup, setSelectedGroup] = useState<InstitutionGroup>('전체');
   const [selectedInstitution, setSelectedInstitution] = useState('전체');
@@ -124,10 +125,22 @@ export default function HomePage() {
     };
   }, []);
 
-  const showLatestReports = () => {
-    if (pendingReports) setReports([...pendingReports]);
-    setPendingReports(null);
-    setNewReportCount(0);
+  const showLatestReports = async () => {
+    setIsRefreshingLatestReports(true);
+    try {
+      const response = await fetch('/api/reports', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`Failed to refresh reports: ${response.status}`);
+
+      const latestReports = await response.json() as Report[];
+      setReports([...latestReports]);
+      setPendingReports(null);
+      setNewReportCount(0);
+      window.location.reload();
+    } catch (error) {
+      console.error('Failed to refresh latest reports:', error);
+    } finally {
+      setIsRefreshingLatestReports(false);
+    }
   };
 
   const dismissLatestReports = () => {
@@ -232,9 +245,10 @@ export default function HomePage() {
               <button
                 type="button"
                 onClick={showLatestReports}
-                className="rounded-lg bg-[#EAF2FF] px-3 py-1.5 text-sm font-medium text-[#2F67C8] transition-colors duration-200 hover:bg-[#DCEAFF] active:bg-[#CFE1FF]"
+                disabled={isRefreshingLatestReports}
+                className="rounded-lg bg-[#EAF2FF] px-3 py-1.5 text-sm font-medium text-[#2F67C8] transition-colors duration-200 hover:bg-[#DCEAFF] active:bg-[#CFE1FF] disabled:cursor-wait disabled:opacity-60"
               >
-                최신 목록 보기
+                {isRefreshingLatestReports ? '불러오는 중...' : '최신 목록 보기'}
               </button>
               <button
                 type="button"

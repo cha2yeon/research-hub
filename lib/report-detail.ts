@@ -48,6 +48,14 @@ const DETAIL_SOURCES = {
     host: 'www.mofe.go.kr',
     selectors: ['.detailBoard'],
   },
+  '기획예산처': {
+    host: 'www.mpb.go.kr',
+    selectors: ['.board-view-box .board-content .editor'],
+    pdfFallback: {
+      attachmentSelectors: ['.board-view-box a[href$=".pdf"]', '.board-view-box a[href*="download"]'],
+      allowedHosts: ['www.mpb.go.kr', 'mpb.go.kr'],
+    },
+  },
   'EY한영': {
     host: 'www.ey.com',
     selectors: ['.rich-text.text.section'],
@@ -488,7 +496,13 @@ export async function fetchReportDetail(organization: string, rawUrl: string): P
         : organization === '금융감독원'
           ? extractStructuredBlocks(root)
           : extractBlocks(root);
-    if (htmlContent) return htmlContent;
+    const mpbHtmlContent = organization === '기획예산처'
+      ? htmlContent
+        .replace(/^.*첨부(?:자료|파일).{0,30}참고.*$/gm, '')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim()
+      : htmlContent;
+    if (mpbHtmlContent) return mpbHtmlContent;
   }
 
   if ('pdfFallback' in source) {

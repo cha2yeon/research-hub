@@ -29,6 +29,7 @@ const DETAIL_ORGANIZATIONS = new Set([
   '중소벤처기업부',
   'KIET 산업연구원',
   '재정경제부',
+  '기획예산처',
   'EY한영',
 ]);
 

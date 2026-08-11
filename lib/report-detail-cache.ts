@@ -1,12 +1,11 @@
 import { createHash } from 'crypto';
 
 export const REPORT_DETAIL_EXTRACTOR_VERSION = 1;
-
-type DetailCacheStatus = 'success' | 'unavailable';
+export const REPORT_DETAIL_CACHE_TTL_MS = 3 * 24 * 60 * 60 * 1000;
 
 interface DetailCacheEntry {
   content: string;
-  status: DetailCacheStatus;
+  updatedAt: string;
 }
 
 interface RuntimeDetailCache {
@@ -42,16 +41,18 @@ async function readDetailCache(organization: string, sourceUrl: string): Promise
 
   const cacheKey = createCacheKey(organization, sourceUrl);
   try {
-    const response = await fetch(`${config.url}/rest/v1/report_detail_cache?cache_key=eq.${cacheKey}&extractor_version=eq.${REPORT_DETAIL_EXTRACTOR_VERSION}&select=content,status&limit=1`, {
+    const response = await fetch(`${config.url}/rest/v1/report_detail_cache?cache_key=eq.${cacheKey}&extractor_version=eq.${REPORT_DETAIL_EXTRACTOR_VERSION}&status=eq.success&select=content,updated_at&limit=1`, {
       headers: { apikey: config.serviceRoleKey, Authorization: `Bearer ${config.serviceRoleKey}` },
       cache: 'no-store',
     });
     if (!response.ok) throw new Error(`read failed: ${response.status}`);
 
-    const rows = await response.json() as Array<Partial<DetailCacheEntry>>;
+    const rows = await response.json() as Array<{ content?: unknown; updated_at?: unknown }>;
     const row = rows[0];
-    if (!row || (row.status !== 'success' && row.status !== 'unavailable') || typeof row.content !== 'string') return null;
-    return { content: row.content, status: row.status };
+    if (!row || typeof row.content !== 'string' || typeof row.updated_at !== 'string') return null;
+    const updatedAt = new Date(row.updated_at);
+    if (Number.isNaN(updatedAt.getTime()) || Date.now() - updatedAt.getTime() > REPORT_DETAIL_CACHE_TTL_MS) return null;
+    return { content: row.content, updatedAt: row.updated_at };
   } catch (error) {
     console.warn('[report-detail-cache] read failed; using external extraction:', error);
     return null;
@@ -75,7 +76,7 @@ async function writeDetailCache(organization: string, sourceUrl: string, content
       organization,
       source_url: sourceUrl,
       content,
-      status: content ? 'success' : 'unavailable',
+      status: 'success',
       extractor_version: REPORT_DETAIL_EXTRACTOR_VERSION,
       extracted_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
@@ -93,7 +94,7 @@ export async function getCachedOrExtractReportDetail(
   const sourceUrl = normalizeDetailSourceUrl(rawUrl);
   const cached = await readDetailCache(organization, sourceUrl);
   if (cached) {
-    console.info(`[report-detail-cache] hit organization=${organization} status=${cached.status}`);
+    console.info(`[report-detail-cache] hit organization=${organization} updatedAt=${cached.updatedAt}`);
     return { content: cached.content, cacheState: 'hit' };
   }
 
@@ -104,6 +105,7 @@ export async function getCachedOrExtractReportDetail(
   console.info(`[report-detail-cache] miss organization=${organization}`);
   const pending = extract()
     .then(async (content) => {
+      if (!content.trim()) return content;
       try {
         await writeDetailCache(organization, sourceUrl, content);
       } catch (error) {

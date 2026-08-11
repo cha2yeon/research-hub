@@ -12,6 +12,7 @@ import { fetchMssReports } from '@/lib/scrapers/mss-research';
 import { fetchKietResearchReports } from '@/lib/scrapers/kiet-research';
 import { fetchMofePressReleases } from '@/lib/scrapers/mofe-research';
 import { fetchEyResearchReports } from '@/lib/scrapers/ey-research';
+import { fetchMpbPressReleases } from '@/lib/scrapers/mpb-research';
 import { Report } from '@/types/report';
 
 export interface ScraperDefinition {
@@ -96,6 +97,11 @@ export const scraperRegistry: ScraperDefinition[] = [
     id: 'ey',
     organization: 'EY한영',
     fetchReports: fetchEyResearchReports,
+  },
+  {
+    id: 'mpb',
+    organization: '기획예산처',
+    fetchReports: fetchMpbPressReleases,
   },
 ];
 
