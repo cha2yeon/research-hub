@@ -8,5 +8,6 @@ export interface Report {
   summary?: string;
   publishedAt: string;
   datePrecision?: 'day' | 'month';
+  firstSeenAt?: string;
   url: string;
 }

@@ -23,7 +23,7 @@ function normalizeFilterValue(value: string): string {
   return value.replace(/\s+/g, '').toLowerCase();
 }
 
-function compareReportsByDate(left: { publishedAt: string; datePrecision?: 'day' | 'month' }, right: { publishedAt: string; datePrecision?: 'day' | 'month' }): number {
+function compareReportsByDate(left: { publishedAt: string; datePrecision?: 'day' | 'month'; firstSeenAt?: string }, right: { publishedAt: string; datePrecision?: 'day' | 'month'; firstSeenAt?: string }): number {
   const monthComparison = right.publishedAt.slice(0, 7).localeCompare(left.publishedAt.slice(0, 7));
   if (monthComparison !== 0) return monthComparison;
 
@@ -31,7 +31,15 @@ function compareReportsByDate(left: { publishedAt: string; datePrecision?: 'day'
   const rightPrecision = right.datePrecision ?? 'day';
   if (leftPrecision !== rightPrecision) return leftPrecision === 'month' ? 1 : -1;
 
-  return new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime();
+  const dateComparison = new Date(right.publishedAt).getTime() - new Date(left.publishedAt).getTime();
+  if (dateComparison !== 0) return dateComparison;
+
+  if (left.firstSeenAt && right.firstSeenAt) {
+    return new Date(right.firstSeenAt).getTime() - new Date(left.firstSeenAt).getTime();
+  }
+  if (left.firstSeenAt) return -1;
+  if (right.firstSeenAt) return 1;
+  return 0;
 }
 
 function reportIdentity(report: Report): string {
@@ -149,15 +157,12 @@ export default function HomePage() {
   };
 
   const filteredReports = useMemo(() => {
-    const reportsForDisplay = selectedGroup === '전체' || selectedGroup === '기타'
-      ? [...reports, ...sharedReports.map(toDisplayReport)]
-      : reports;
+    const reportsForDisplay = reports;
     const groupOrganizations = getOrganizationNamesForGroup(selectedGroup);
     const reportsForSelectedGroup = selectedGroup === '전체'
       ? reportsForDisplay
       : reportsForDisplay.filter((report) =>
-        groupOrganizations.includes(report.organization) ||
-        (selectedGroup === '기타' && report.category === '공유'),
+        groupOrganizations.includes(report.organization),
       );
     const reportsForSelectedInstitution = selectedInstitution === '전체'
       ? reportsForSelectedGroup
@@ -197,7 +202,7 @@ export default function HomePage() {
     })),
   ], [selectedGroup]);
 
-  const isSharedReportsSelected = selectedGroup === '기타' && selectedInstitution === '공유 보고서';
+  const isSharedReportsSelected = selectedGroup === '공유 보고서';
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-800 sm:px-6 lg:px-8">
@@ -282,7 +287,7 @@ export default function HomePage() {
             />
             <div className="-mt-1 mb-0 h-px w-full bg-slate-200/70" />
             <div className="flex min-h-[26px] w-full items-start">
-              {selectedGroup !== '전체' ? (
+              {selectedGroup !== '전체' && selectedGroup !== '공유 보고서' ? (
                 <ReportFilterTabsClient
                   options={institutionOptions}
                   selected={selectedInstitution}

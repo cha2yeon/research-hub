@@ -66,6 +66,42 @@ function replaceOrganizationReports(fresh: Report[]): Report[] {
   return deduplicateReports(fresh);
 }
 
+export function preserveFirstSeenAt(previousReports: Report[], freshReports: Report[], seenAt: string): Report[] {
+  const previousByKey = new Map(previousReports.map((report, index) => [reportKey(report), { report, index }]));
+  const reports = freshReports.map((report) => {
+    const previous = previousByKey.get(reportKey(report));
+    if (previous) {
+      return previous.report.firstSeenAt ? { ...report, firstSeenAt: previous.report.firstSeenAt } : report;
+    }
+    return { ...report, firstSeenAt: seenAt };
+  });
+
+  // Legacy cached reports intentionally have no firstSeenAt. Keep their existing
+  // relative order within each publication date even if a scraper changes its list order.
+  const legacyByPublishedAt = new Map<string, Report[]>();
+  reports.forEach((report) => {
+    const previous = previousByKey.get(reportKey(report));
+    if (report.firstSeenAt || !previous) return;
+    const legacyReports = legacyByPublishedAt.get(report.publishedAt) || [];
+    legacyReports.push(report);
+    legacyByPublishedAt.set(report.publishedAt, legacyReports);
+  });
+  legacyByPublishedAt.forEach((legacyReports) => {
+    legacyReports.sort((left, right) => (
+      previousByKey.get(reportKey(left))!.index - previousByKey.get(reportKey(right))!.index
+    ));
+  });
+
+  const legacyOffsets = new Map<string, number>();
+  return reports.map((report) => {
+    const previous = previousByKey.get(reportKey(report));
+    if (report.firstSeenAt || !previous) return report;
+    const offset = legacyOffsets.get(report.publishedAt) || 0;
+    legacyOffsets.set(report.publishedAt, offset + 1);
+    return legacyByPublishedAt.get(report.publishedAt)?.[offset] || report;
+  });
+}
+
 async function readPersistentCache(): Promise<CachedReports | null> {
   const config = getSupabaseConfig();
   if (!config) return null;
@@ -149,7 +185,9 @@ async function refreshReports(previousReports: Report[]): Promise<Report[]> {
       continue;
     }
 
-    const replacement = replaceOrganizationReports(result.reports);
+    const replacement = replaceOrganizationReports(
+      preserveFirstSeenAt(previous, result.reports, new Date().toISOString()),
+    );
     refreshedOrganizationCount += 1;
     mergedByOrganization.set(result.organization, replacement);
     console.info(`[${result.organization}] cache refreshed: previous=${previous.length} fresh=${result.reports.length} final=${replacement.length}`);

@@ -31,9 +31,11 @@ const DETAIL_ORGANIZATIONS = new Set([
   '재정경제부',
   '기획예산처',
   'EY한영',
+  '국제금융센터(KCIF)',
+  'Federal Reserve',
 ]);
 
-const LIST_SUMMARY_ONLY_ORGANIZATIONS = new Set(['KDI(한국개발연구원)', 'KIET 산업연구원']);
+const LIST_SUMMARY_ONLY_ORGANIZATIONS = new Set(['KDI(한국개발연구원)', 'KIET 산업연구원', 'Federal Reserve']);
 
 function createDisplaySummary(report: Report): string {
   const summary = report.summary?.replace(/\s+/g, ' ').trim();

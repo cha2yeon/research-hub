@@ -13,6 +13,8 @@ import { fetchKietResearchReports } from '@/lib/scrapers/kiet-research';
 import { fetchMofePressReleases } from '@/lib/scrapers/mofe-research';
 import { fetchEyResearchReports } from '@/lib/scrapers/ey-research';
 import { fetchMpbPressReleases } from '@/lib/scrapers/mpb-research';
+import { fetchKcifResearchReports } from '@/lib/scrapers/kcif-research';
+import { fetchFederalReserveReports } from '@/lib/scrapers/fed-research';
 import { Report } from '@/types/report';
 
 export interface ScraperDefinition {
@@ -102,6 +104,16 @@ export const scraperRegistry: ScraperDefinition[] = [
     id: 'mpb',
     organization: '기획예산처',
     fetchReports: fetchMpbPressReleases,
+  },
+  {
+    id: 'kcif',
+    organization: '국제금융센터(KCIF)',
+    fetchReports: fetchKcifResearchReports,
+  },
+  {
+    id: 'federal-reserve',
+    organization: 'Federal Reserve',
+    fetchReports: fetchFederalReserveReports,
   },
 ];
 

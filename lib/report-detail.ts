@@ -60,6 +60,10 @@ const DETAIL_SOURCES = {
     host: 'www.ey.com',
     selectors: ['.rich-text.text.section'],
   },
+  '국제금융센터(KCIF)': {
+    host: 'www.kcif.or.kr',
+    selectors: ['.page_view'],
+  },
 } as const;
 
 type DetailOrganization = keyof typeof DETAIL_SOURCES;
