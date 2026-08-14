@@ -210,8 +210,15 @@ export default function HomePage() {
         <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="max-w-[38rem]">
             <div>
-              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 sm:text-sm">
-                DISCOVER INSIGHTS, INSPIRE RESEARCH.
+              <p className="text-[13px] font-medium tracking-normal text-slate-500 sm:text-[15px]">
+                <Image
+                  src="/ibk-symbol-only.png"
+                  alt=""
+                  width={16}
+                  height={16}
+                  className="mr-1 inline-block align-[-2px] md:hidden"
+                />
+                IBK경제연구소
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
                 Research Hub
@@ -219,8 +226,8 @@ export default function HomePage() {
             </div>
 
             <p className="mt-3 max-w-2xl text-xs text-slate-600 sm:text-base">
-              여러 연구기관의 최신 보고서를 한곳에서 모아보고,<br />
-              최신 연구 동향을 빠르게 확인하세요.
+              Discover Insight <br />
+              여러 연구기관의 최신 보고서를 한 눈에 볼 수 있습니다.
             </p>
             <div className="mt-6 w-full max-w-[36rem]">
               <ReportSearchBarClient
