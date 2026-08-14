@@ -13,7 +13,11 @@ export function ReportFilterTabsClient({ options, selected, onSelect, variant = 
 
   return (
     <div className={`flex flex-wrap items-center ${
-      isPrimaryNavigation ? 'gap-x-10 text-lg' : showSeparators ? 'gap-x-3 text-[15px]' : 'gap-x-8 text-[15px]'
+      isPrimaryNavigation
+        ? 'gap-x-6 gap-y-2 text-sm sm:gap-x-10 sm:text-lg'
+        : showSeparators
+          ? 'gap-x-2 gap-y-1.5 text-sm sm:gap-x-3 sm:text-[15px]'
+          : 'gap-x-6 gap-y-1.5 text-sm sm:gap-x-8 sm:text-[15px]'
     }`}
     >
       {options.map((option, index) => {
@@ -32,7 +36,7 @@ export function ReportFilterTabsClient({ options, selected, onSelect, variant = 
               {option.label}
             </button>
             {showSeparators && index < options.length - 1 && (
-              <span aria-hidden="true" className="ml-3 select-none text-slate-200">|</span>
+              <span aria-hidden="true" className="ml-2 select-none text-slate-200 sm:ml-3">|</span>
             )}
           </span>
         );

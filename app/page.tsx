@@ -206,11 +206,11 @@ export default function HomePage() {
 
   return (
     <main className="min-h-screen bg-slate-50 px-4 py-10 text-slate-800 sm:px-6 lg:px-8">
-      <div className="mx-auto flex max-w-6xl flex-col gap-8">
-        <header className="relative rounded-3xl border border-slate-200 bg-white p-6 shadow-sm sm:p-7">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 sm:gap-8">
+        <header className="relative rounded-3xl border border-slate-200 bg-white p-5 shadow-sm sm:p-7">
           <div className="max-w-[38rem]">
             <div>
-              <p className="text-sm font-medium uppercase tracking-[0.2em] text-slate-500">
+              <p className="text-xs font-medium uppercase tracking-[0.2em] text-slate-500 sm:text-sm">
                 DISCOVER INSIGHTS, INSPIRE RESEARCH.
               </p>
               <h1 className="mt-2 text-3xl font-semibold tracking-tight text-slate-900 sm:text-4xl">
@@ -218,7 +218,7 @@ export default function HomePage() {
               </h1>
             </div>
 
-            <p className="mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
+            <p className="mt-3 max-w-2xl text-xs text-slate-600 sm:text-base">
               여러 연구기관의 최신 보고서를 한곳에서 모아보고,<br />
               최신 연구 동향을 빠르게 확인하세요.
             </p>
@@ -242,23 +242,23 @@ export default function HomePage() {
         </header>
 
         {pendingReports && newReportCount > 0 && (
-          <div className="fixed left-1/2 top-6 z-[1000] flex min-h-12 w-fit max-w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 items-center gap-5 rounded-2xl border border-slate-200 bg-white px-8 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] sm:px-9">
-            <p className="text-[15px] font-normal text-slate-700">
+          <div className="fixed left-1/2 top-6 z-[1000] flex w-[calc(100vw-2rem)] max-w-[min(640px,calc(100vw-2rem))] -translate-x-1/2 flex-col gap-2 rounded-2xl border border-slate-200 bg-white px-5 py-3 shadow-[0_10px_30px_rgba(15,23,42,0.12)] sm:min-h-12 sm:w-fit sm:flex-row sm:items-center sm:gap-5 sm:px-9">
+            <p className="text-center text-sm font-normal text-slate-700 sm:text-[15px]">
               <span className="mr-1 inline-block scale-[1.08]">📄</span> 최신 보고서 {newReportCount}건이 추가되었습니다.
             </p>
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex w-full shrink-0 items-center justify-center gap-2 sm:w-auto">
               <button
                 type="button"
                 onClick={showLatestReports}
                 disabled={isRefreshingLatestReports}
-                className="rounded-lg bg-[#EAF2FF] px-3 py-1.5 text-sm font-medium text-[#2F67C8] transition-colors duration-200 hover:bg-[#DCEAFF] active:bg-[#CFE1FF] disabled:cursor-wait disabled:opacity-60"
+                className="rounded-lg bg-[#EAF2FF] px-3 py-1.5 text-xs font-medium text-[#2F67C8] transition-colors duration-200 hover:bg-[#DCEAFF] active:bg-[#CFE1FF] disabled:cursor-wait disabled:opacity-60 sm:text-sm"
               >
                 {isRefreshingLatestReports ? '불러오는 중...' : '최신 목록 보기'}
               </button>
               <button
                 type="button"
                 onClick={dismissLatestReports}
-                className="rounded-lg p-1.5 text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                className="absolute right-3 top-1/2 -translate-y-1/2 rounded-lg p-1.5 text-lg leading-none text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
                 aria-label="최신 보고서 알림 닫기"
               >
                 ×
@@ -267,10 +267,10 @@ export default function HomePage() {
           </div>
         )}
 
-        <section className="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm">
-          <div className="mb-3 flex flex-col gap-3.5">
+        <section className="rounded-3xl border border-slate-200 bg-white p-4 shadow-sm sm:p-6">
+          <div className="mb-3 flex flex-col gap-3 sm:gap-3.5">
             <div className="flex flex-col gap-1 sm:flex-row sm:items-baseline sm:justify-between sm:gap-4">
-              <h2 className="text-2xl font-bold text-slate-900">보고서 목록</h2>
+              <h2 className="text-xl font-bold text-slate-900 sm:text-2xl">보고서 목록</h2>
               <p className="text-[13px] font-normal text-slate-500 sm:text-sm">
                 ⓘ 최근 4주 연구보고서 · 최근 2주 보도자료
               </p>
@@ -296,11 +296,11 @@ export default function HomePage() {
                   showSeparators
                 />
               ) : (
-                <div className="flex flex-wrap items-center gap-x-3 text-[15px]">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-sm sm:gap-x-3 sm:text-[15px]">
                 {(['전체', '연구보고서', '보도자료'] as ReportTypeFilter[]).map((type, index, types) => {
                   const isActive = type === selectedReportType;
                   return (
-                    <span key={type} className="flex items-center gap-x-3">
+                    <span key={type} className="flex items-center gap-x-2 sm:gap-x-3">
                       <button
                         type="button"
                         onClick={() => setSelectedReportType(type)}

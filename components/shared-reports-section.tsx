@@ -173,7 +173,7 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
         <button
           type="button"
           onClick={openCreateForm}
-          className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+          className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-medium text-white shadow-sm transition hover:bg-slate-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:text-sm"
         >
           + 보고서 등록
         </button>
@@ -200,16 +200,16 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
                     <span aria-hidden="true" className="text-xs text-slate-400">|</span>
                     <span className="rounded-full border border-transparent bg-slate-100 px-3 py-1 text-xs font-medium text-slate-500">{report.organization}</span>
                   </div>
-                  <h4 className="text-lg font-semibold text-slate-900">{report.title}</h4>
+                  <h4 className="break-words text-base font-semibold text-slate-900 sm:text-lg">{report.title}</h4>
                 </div>
                 <div className="flex shrink-0 flex-wrap items-center gap-2 md:justify-end">
-                  <button type="button" onClick={() => { setAdminPassword(''); setPasswordError(''); setAdminAction({ type: 'edit', report }); }} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900">수정</button>
-                  <button type="button" onClick={() => { setAdminPassword(''); setPasswordError(''); setAdminAction({ type: 'delete', report }); }} className="rounded-full border border-slate-200 px-3 py-1.5 text-sm font-medium text-slate-600 transition hover:border-rose-200 hover:text-rose-600">삭제</button>
+                  <button type="button" onClick={() => { setAdminPassword(''); setPasswordError(''); setAdminAction({ type: 'edit', report }); }} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-slate-300 hover:text-slate-900 sm:text-sm">수정</button>
+                  <button type="button" onClick={() => { setAdminPassword(''); setPasswordError(''); setAdminAction({ type: 'delete', report }); }} className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 transition hover:border-rose-200 hover:text-rose-600 sm:text-sm">삭제</button>
                 </div>
               </div>
               <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-                <a href={report.url} target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50">원문보기</a>
-                <span className="text-sm text-slate-500">{formatDate(report.published_at)}</span>
+                <a href={report.url} target="_blank" rel="noreferrer" className="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 sm:text-sm">원문보기</a>
+                <span className="text-xs text-slate-500 sm:text-sm">{formatDate(report.published_at)}</span>
               </div>
             </article>
           ))}
@@ -237,8 +237,8 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
               </label>
             ))}
             <div className="flex justify-end gap-2 pt-2">
-              <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300">취소</button>
-              <button disabled={isSaving} type="submit" className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">{isSaving ? '저장 중...' : '저장'}</button>
+              <button type="button" onClick={() => setIsFormOpen(false)} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:border-slate-300 sm:text-sm">취소</button>
+              <button disabled={isSaving} type="submit" className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm">{isSaving ? '저장 중...' : '저장'}</button>
             </div>
           </form>
         </div>
@@ -261,8 +261,8 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
               className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-slate-400 focus:ring-2 focus:ring-slate-100"
             />
             <div className="flex justify-end gap-2">
-              <button type="button" onClick={() => { setAdminAction(null); setAdminPassword(''); setPasswordError(''); }} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-600 hover:border-slate-300">취소</button>
-              <button disabled={isAuthorizing} type="submit" className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60">확인</button>
+              <button type="button" onClick={() => { setAdminAction(null); setAdminPassword(''); setPasswordError(''); }} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-medium text-slate-600 hover:border-slate-300 sm:text-sm">취소</button>
+              <button disabled={isAuthorizing} type="submit" className="rounded-full border border-slate-900 bg-slate-900 px-4 py-2 text-xs font-medium text-white disabled:cursor-not-allowed disabled:opacity-60 sm:text-sm">확인</button>
             </div>
           </form>
         </div>

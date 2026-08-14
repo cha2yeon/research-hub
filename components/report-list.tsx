@@ -157,7 +157,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
         return (
         <article
           key={reportKey}
-          className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md"
+          className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm transition hover:shadow-md sm:p-5"
         >
           <div className={usesDetailCard ? 'space-y-3' : 'flex flex-col gap-3 md:flex-row md:items-start md:justify-between'}>
             <div className={usesDetailCard ? 'space-y-3' : 'space-y-1.5'}>
@@ -171,9 +171,9 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                 </span>
               </div>
               <div className={usesDetailCard ? 'flex flex-col items-start gap-2 sm:flex-row sm:items-start sm:justify-between sm:gap-6' : undefined}>
-                <h3 className={usesDetailCard ? 'flex-1 text-lg font-semibold text-slate-900' : 'text-lg font-semibold text-slate-900'}>{formatDisplayTitle(report)}</h3>
+                <h3 className={usesDetailCard ? 'flex-1 break-words text-base font-semibold text-slate-900 sm:text-lg' : 'break-words text-base font-semibold text-slate-900 sm:text-lg'}>{formatDisplayTitle(report)}</h3>
                 {usesDetailCard && (
-                  <span className="shrink-0 whitespace-nowrap text-sm text-slate-500">{formatPublishedAt(report)}</span>
+                  <span className="shrink-0 whitespace-nowrap text-xs text-slate-500 sm:text-sm">{formatPublishedAt(report)}</span>
                 )}
               </div>
               {usesDetailCard ? (
@@ -183,7 +183,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                       href={report.url}
                       target="_blank"
                       rel="noreferrer"
-                      className="whitespace-nowrap rounded-full border border-slate-200 px-4 py-2 text-sm font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2"
+                      className="whitespace-nowrap rounded-full border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-700 transition hover:border-slate-300 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-2 sm:text-sm"
                     >
                       원문보기
                     </a>
@@ -192,7 +192,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                         onClick={toggleSummary}
                         aria-expanded={isSummaryOpen}
                         aria-controls={summaryRegionId}
-                        className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 ${isSummaryOpen ? 'border-slate-400 bg-slate-100 text-slate-800' : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'}`}
+                        className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-xs font-medium transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-400 focus-visible:ring-offset-2 sm:px-4 sm:py-2 sm:text-sm ${isSummaryOpen ? 'border-slate-400 bg-slate-100 text-slate-800' : 'border-slate-300 bg-slate-50 text-slate-700 hover:border-slate-400 hover:bg-slate-100'}`}
                       >
                         {isSummaryOpen ? '접기' : '요약보기'}
                     </button>}
@@ -201,7 +201,7 @@ export function ReportList({ reports, isLoading = false }: ReportListProps) {
                   {isSummaryOpen && (
                     <div id={summaryRegionId} className={`grid transition-[grid-template-rows,opacity,margin] duration-300 ease-out ${isSummaryOpen ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}>
                       <div className="min-h-0 overflow-hidden">
-                        {detailState?.loading ? <p className="text-base leading-7 text-slate-500">상세 내용을 불러오는 중입니다...</p> : detailState?.error ? <p className="text-base leading-7 text-rose-600">{detailState.error}</p> : <p className="whitespace-pre-line text-base leading-7 text-slate-600">{summaryContent}</p>}
+                        {detailState?.loading ? <p className="text-sm leading-6 text-slate-500 sm:text-base sm:leading-7">상세 내용을 불러오는 중입니다...</p> : detailState?.error ? <p className="text-sm leading-6 text-rose-600 sm:text-base sm:leading-7">{detailState.error}</p> : <p className="break-words whitespace-pre-line text-sm leading-6 text-slate-600 sm:text-base sm:leading-7">{summaryContent}</p>}
                       </div>
                     </div>
                   )}
