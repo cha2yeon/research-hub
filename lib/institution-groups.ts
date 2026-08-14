@@ -13,7 +13,7 @@ export const INSTITUTION_GROUPS = {
     { organization: 'KDB미래전략연구소', label: 'KDB미래전략연구소' },
     { organization: '한국금융연구원', label: '한국금융연구원' },
     { organization: 'KIET 산업연구원', label: 'KIET 산업연구원' },
-    { organization: '국제금융센터(KCIF)', label: '국제금융센터(KCIF)' },
+    { organization: '국제금융센터(KCIF)', label: '국제금융센터' },
   ],
   민간연구기관: [
     { organization: 'KB경영연구소', label: 'KB경영연구소' },
