@@ -1,6 +1,7 @@
 'use client';
 
 import { ReportList } from '@/components/report-list';
+import { PaginationControls } from '@/components/pagination-controls';
 import { ReportFilterTabsClient } from '@/components/report-filter-tabs-client';
 import { ReportSearchBarClient } from '@/components/report-search-bar-client';
 import { SharedReportsSection } from '@/components/shared-reports-section';
@@ -18,6 +19,7 @@ import { useEffect, useMemo, useState } from 'react';
 
 const REPORT_POLL_INTERVAL_MS = 3_000;
 const REPORT_POLL_MAX_DURATION_MS = 30_000;
+const REPORTS_PER_PAGE = 20;
 
 function normalizeFilterValue(value: string): string {
   return value.replace(/\s+/g, '').toLowerCase();
@@ -65,6 +67,7 @@ export default function HomePage() {
   const [selectedGroup, setSelectedGroup] = useState<InstitutionGroup>('전체');
   const [selectedInstitution, setSelectedInstitution] = useState('전체');
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeFilter>('전체');
+  const [currentPage, setCurrentPage] = useState(1);
   const [sharedReports, setSharedReports] = useState<SharedReport[]>([]);
 
   useEffect(() => {
@@ -202,6 +205,16 @@ export default function HomePage() {
     })),
   ], [selectedGroup]);
 
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / REPORTS_PER_PAGE));
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
+    return filteredReports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
+  }, [currentPage, filteredReports]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+
   const isSharedReportsSelected = selectedGroup === '공유 보고서';
 
   return (
@@ -232,7 +245,10 @@ export default function HomePage() {
             <div className="mt-6 w-full max-w-[36rem]">
               <ReportSearchBarClient
                 value={searchQuery}
-                onChange={setSearchQuery}
+                onChange={(query) => {
+                  setSearchQuery(query);
+                  setCurrentPage(1);
+                }}
                 placeholder="보고서 제목 또는 기관명을 검색하세요"
               />
             </div>
@@ -290,6 +306,7 @@ export default function HomePage() {
                 setSelectedGroup(group as InstitutionGroup);
                 setSelectedInstitution('전체');
                 setSelectedReportType('전체');
+                setCurrentPage(1);
               }}
             />
             <div className="-mt-1 mb-0 h-px w-full bg-slate-200/70" />
@@ -298,7 +315,10 @@ export default function HomePage() {
                 <ReportFilterTabsClient
                   options={institutionOptions}
                   selected={selectedInstitution}
-                  onSelect={setSelectedInstitution}
+                  onSelect={(institution) => {
+                    setSelectedInstitution(institution);
+                    setCurrentPage(1);
+                  }}
                   variant="institution"
                   showSeparators
                 />
@@ -310,7 +330,10 @@ export default function HomePage() {
                     <span key={type} className="flex items-center gap-x-2 sm:gap-x-3">
                       <button
                         type="button"
-                        onClick={() => setSelectedReportType(type)}
+                        onClick={() => {
+                          setSelectedReportType(type);
+                          setCurrentPage(1);
+                        }}
                         className={`border-b-2 py-0.5 transition-colors duration-200 ${
                           isActive
                             ? 'border-[#2F67C8] font-semibold text-[#2F67C8]'
@@ -333,11 +356,19 @@ export default function HomePage() {
           {isSharedReportsSelected ? (
             <SharedReportsSection searchQuery="" />
           ) : (
-            <ReportList
-              key={`${selectedGroup}:${selectedInstitution}`}
-              reports={filteredReports}
-              isLoading={isLoadingReports}
-            />
+            <div className="space-y-4">
+              <ReportList
+                key={`${selectedGroup}:${selectedInstitution}`}
+                reports={paginatedReports}
+                isLoading={isLoadingReports}
+              />
+              <PaginationControls
+                currentPage={currentPage}
+                totalItems={filteredReports.length}
+                pageSize={REPORTS_PER_PAGE}
+                onPageChange={setCurrentPage}
+              />
+            </div>
           )}
         </section>
       </div>

@@ -1,6 +1,7 @@
 'use client';
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { PaginationControls } from '@/components/pagination-controls';
 import { SharedReport, SharedReportInput } from '@/types/shared-report';
 
 const EMPTY_FORM: SharedReportInput = {
@@ -9,6 +10,7 @@ const EMPTY_FORM: SharedReportInput = {
   published_at: '',
   url: '',
 };
+const REPORTS_PER_PAGE = 20;
 
 type AdminAction = { type: 'edit' | 'delete'; report: SharedReport };
 
@@ -29,6 +31,7 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
   const [adminAction, setAdminAction] = useState<AdminAction | null>(null);
   const [adminPassword, setAdminPassword] = useState('');
   const [isAuthorizing, setIsAuthorizing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadReports = async () => {
     setIsLoading(true);
@@ -59,6 +62,20 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
       report.title.toLowerCase().includes(keyword) || report.organization.toLowerCase().includes(keyword),
     );
   }, [reports, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(visibleReports.length / REPORTS_PER_PAGE));
+  const paginatedReports = useMemo(() => {
+    const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
+    return visibleReports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
+  }, [currentPage, visibleReports]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
 
   const openCreateForm = () => {
     setEditingReport(null);
@@ -191,7 +208,7 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
         </div>
       ) : (
         <div className="grid gap-4">
-          {visibleReports.map((report) => (
+          {paginatedReports.map((report) => (
             <article key={report.id} className="relative rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition hover:shadow-md">
               <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
                 <div className="space-y-3">
@@ -215,6 +232,12 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
           ))}
         </div>
       )}
+      <PaginationControls
+        currentPage={currentPage}
+        totalItems={visibleReports.length}
+        pageSize={REPORTS_PER_PAGE}
+        onPageChange={setCurrentPage}
+      />
 
       {isFormOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/30 p-4" role="dialog" aria-modal="true" aria-labelledby="shared-report-form-title">
