@@ -1,6 +1,7 @@
 'use client';
 
 import { ReportList } from '@/components/report-list';
+import { DateRangeFilter } from '@/components/date-range-filter';
 import { PaginationControls } from '@/components/pagination-controls';
 import { ReportFilterTabsClient } from '@/components/report-filter-tabs-client';
 import { ReportSearchBarClient } from '@/components/report-search-bar-client';
@@ -23,6 +24,10 @@ const REPORTS_PER_PAGE = 20;
 
 function normalizeFilterValue(value: string): string {
   return value.replace(/\s+/g, '').toLowerCase();
+}
+
+function normalizePublishedDate(value: string): string {
+  return value.length === 7 ? `${value}-01` : value.slice(0, 10);
 }
 
 function compareReportsByDate(left: { publishedAt: string; datePrecision?: 'day' | 'month'; firstSeenAt?: string }, right: { publishedAt: string; datePrecision?: 'day' | 'month'; firstSeenAt?: string }): number {
@@ -68,6 +73,8 @@ export default function HomePage() {
   const [selectedInstitution, setSelectedInstitution] = useState('전체');
   const [selectedReportType, setSelectedReportType] = useState<ReportTypeFilter>('전체');
   const [currentPage, setCurrentPage] = useState(1);
+  const [startDate, setStartDate] = useState('');
+  const [endDate, setEndDate] = useState('');
   const [sharedReports, setSharedReports] = useState<SharedReport[]>([]);
 
   useEffect(() => {
@@ -192,10 +199,15 @@ export default function HomePage() {
       return matchesReportType && matchesSearch;
     });
 
-    const sortedReports = [...matchedReports].sort(compareReportsByDate);
+    const dateFilteredReports = matchedReports.filter((report) => {
+      const publishedDate = normalizePublishedDate(report.publishedAt);
+      return (!startDate || publishedDate >= startDate) && (!endDate || publishedDate <= endDate);
+    });
+
+    const sortedReports = [...dateFilteredReports].sort(compareReportsByDate);
 
     return sortedReports;
-  }, [reports, searchQuery, selectedGroup, selectedInstitution, selectedReportType, sharedReports]);
+  }, [reports, searchQuery, selectedGroup, selectedInstitution, selectedReportType, startDate, endDate, sharedReports]);
 
   const institutionOptions = useMemo(() => [
     { value: '전체', label: '전체' },
@@ -310,7 +322,7 @@ export default function HomePage() {
               }}
             />
             <div className="-mt-1 mb-0 h-px w-full bg-slate-200/70" />
-            <div className="flex min-h-[26px] w-full items-start">
+            <div className="flex min-h-[26px] w-full flex-col items-start gap-2 sm:flex-row sm:justify-between">
               {selectedGroup !== '전체' && selectedGroup !== '공유 보고서' ? (
                 <ReportFilterTabsClient
                   options={institutionOptions}
@@ -350,11 +362,25 @@ export default function HomePage() {
                 })}
                 </div>
               )}
+              <DateRangeFilter
+                startDate={startDate}
+                endDate={endDate}
+                onApply={(range) => {
+                  setStartDate(range.startDate);
+                  setEndDate(range.endDate);
+                  setCurrentPage(1);
+                }}
+                onClear={() => {
+                  setStartDate('');
+                  setEndDate('');
+                  setCurrentPage(1);
+                }}
+              />
             </div>
           </div>
 
           {isSharedReportsSelected ? (
-            <SharedReportsSection searchQuery="" />
+            <SharedReportsSection searchQuery="" startDate={startDate} endDate={endDate} />
           ) : (
             <div className="space-y-4">
               <ReportList

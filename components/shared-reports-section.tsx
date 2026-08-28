@@ -18,7 +18,13 @@ function formatDate(date: string): string {
   return date.replace(/-/g, '.');
 }
 
-export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
+interface SharedReportsSectionProps {
+  searchQuery: string;
+  startDate: string;
+  endDate: string;
+}
+
+export function SharedReportsSection({ searchQuery, startDate, endDate }: SharedReportsSectionProps) {
   const [reports, setReports] = useState<SharedReport[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [listError, setListError] = useState('');
@@ -63,15 +69,19 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
     );
   }, [reports, searchQuery]);
 
-  const totalPages = Math.max(1, Math.ceil(visibleReports.length / REPORTS_PER_PAGE));
+  const dateFilteredReports = useMemo(() => visibleReports.filter((report) =>
+    (!startDate || report.published_at >= startDate) && (!endDate || report.published_at <= endDate),
+  ), [visibleReports, startDate, endDate]);
+
+  const totalPages = Math.max(1, Math.ceil(dateFilteredReports.length / REPORTS_PER_PAGE));
   const paginatedReports = useMemo(() => {
     const startIndex = (currentPage - 1) * REPORTS_PER_PAGE;
-    return visibleReports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
-  }, [currentPage, visibleReports]);
+    return dateFilteredReports.slice(startIndex, startIndex + REPORTS_PER_PAGE);
+  }, [currentPage, dateFilteredReports]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery]);
+  }, [searchQuery, startDate, endDate]);
 
   useEffect(() => {
     setCurrentPage((page) => Math.min(page, totalPages));
@@ -202,7 +212,7 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
           <span className="h-5 w-5 animate-spin rounded-full border-2 border-slate-300 border-t-slate-700" aria-hidden="true" />
           공유 보고서를 불러오는 중입니다...
         </div>
-      ) : visibleReports.length === 0 ? (
+      ) : dateFilteredReports.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-slate-200 bg-slate-50 px-6 py-10 text-center text-sm text-slate-500">
           공유된 보고서가 없습니다.
         </div>
@@ -234,7 +244,7 @@ export function SharedReportsSection({ searchQuery }: { searchQuery: string }) {
       )}
       <PaginationControls
         currentPage={currentPage}
-        totalItems={visibleReports.length}
+        totalItems={dateFilteredReports.length}
         pageSize={REPORTS_PER_PAGE}
         onPageChange={setCurrentPage}
       />
