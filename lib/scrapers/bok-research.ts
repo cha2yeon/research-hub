@@ -9,6 +9,7 @@ const BOK_LISTS = [
   { name: '보도자료', menuNo: '201263', depth2: '200038', recentDays: 14, category: '보도자료' },
   { name: 'BOK 이슈노트', menuNo: '200433', depth2: '201156', recentDays: 28, category: '연구보고서' },
   { name: 'BOK 경제연구', menuNo: '200431', depth2: '201156', recentDays: 28, category: '연구보고서' },
+  { name: 'BOK 경제연구 INSIGHT', menuNo: '201754', depth2: '201156', recentDays: 28, category: '연구보고서' },
   { name: '금융안정 조사연구', menuNo: '200327', depth2: '201156', recentDays: 28, category: '연구보고서' },
   { name: '경제전망 핵심이슈·심층연구', menuNo: '201140', depth2: '201156', recentDays: 28, category: '연구보고서' },
 ] as const;
